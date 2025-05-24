@@ -35,7 +35,7 @@ async def create_note(note: dict, namespace: str):
             "user_id": namespace,
             "title": note.title,
             "note": note.note,
-            "type": "Notes",
+            "type": "Note",
             "date": datetime.now().isoformat(),
         }
 
