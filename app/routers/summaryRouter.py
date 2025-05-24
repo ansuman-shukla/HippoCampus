@@ -8,15 +8,17 @@ router = APIRouter(
 )
 
 @router.post("/generate")
-async def generate_web_summary(corpus: str):
+async def generate_web_summary(request: Request):
     """
     Generate a summary for the provided text.
     """
+    data = await request.json()
     try:
-        if not corpus:
-            raise HTTPException(status_code=400, detail="Text is required for summarization")
+        content = data.get("content")
+        if not content:
+            raise HTTPException(status_code=400, detail="Content is required for summarization")
 
-        summary = await generate_summary(corpus)
+        summary = await generate_summary(content)
         return {"summary": summary}
 
     except Exception as e:
