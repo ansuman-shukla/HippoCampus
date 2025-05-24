@@ -6,12 +6,10 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 def generate_summary(text: str) -> str:
     llm = GoogleGenerativeAI(
         model="gemini-2.0-flash",
-        temperature=0.2,
-        max_output_tokens=1000,
+        temperature=0.0,
+        max_output_tokens=2048,
         top_p=0.95,
         top_k=1,
-        max_retries=3,
-        retry_delay=2
     )
 
     system_message = SystemMessage(
@@ -47,6 +45,9 @@ def generate_summary(text: str) -> str:
     )
 
     response = llm.invoke([system_message])
+    print(f"LLM Response: {response.content}")
+    if not response.content:
+        raise ValueError("The LLM did not return any content.")
 
     return response.content
 
