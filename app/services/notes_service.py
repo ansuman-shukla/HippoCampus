@@ -75,8 +75,10 @@ async def search_notes(query: str, namespace: str) -> List[Dict]:
     """
     Search notes for a user based on a query.
     """
-    
-    
+    return await search_vector_db(
+        query=query,
+        namespace=namespace,
+    )
 
 
 async def update_note(note_id: str, note: dict, user_id: str):

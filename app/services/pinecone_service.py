@@ -107,11 +107,13 @@ async def search_vector_db(
         documents = []
 
         if documents is None:
-            raise SearchExecutionError("No documents found matching query. The result is None")
+            print("No documents found in the search results")
 
         for match in results['matches']:
             doc_id = match['id']
             metadata = match['metadata']
+            print(f"{namespace} , Processing document ID: {doc_id} with metadata: {metadata}")
+
 
             if metadata.get('type') == 'Bookmark':
                 documents.append(Document(
@@ -119,15 +121,16 @@ async def search_vector_db(
                 page_content=f"Title: {metadata['title']}\nNote: {metadata['note']}\nSource: {metadata['source_url']}",
                 metadata=metadata
             ))
-            if metadata.get('type') == 'Note':
+                
+            else:
                 documents.append(Document(
                 id=doc_id,
                 page_content=f"Title: {metadata['title']}\nNote: {metadata['note']}",
                 metadata=metadata
             ))
-
         if not documents:
             raise SearchExecutionError("No documents found matching query")
+        
 
         return documents
 

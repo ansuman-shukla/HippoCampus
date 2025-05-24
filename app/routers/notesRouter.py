@@ -43,6 +43,19 @@ async def update_existing_note(note_id: str, note: dict, request: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
     return await update_note(note_id, note, user_id)
 
+@router.get("/search")
+async def search_notes_by_query(request: Request, query: str):
+    """
+    Search notes for a user based on a query string.
+    """
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        logger.warning("Unauthorized search attempt - missing user ID")
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return await search_notes(query=query, namespace=user_id)
+
+
+
 @router.delete("/{note_id}")
 async def delete_existing_note(request: Request, note_id: str):
     """
