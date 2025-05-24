@@ -9,6 +9,7 @@ from app.services.user_service import create_user_if_not_exists
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.get_quotes import router as get_quotes_router
 from app.routers.notesRouter import router as notes_router
+from app.routers.summaryRouter import router as summary_router
 load_dotenv()
 app = FastAPI() 
 
@@ -70,6 +71,7 @@ app.add_middleware(
 app.include_router(bookmark_router)
 app.include_router(get_quotes_router)
 app.include_router(notes_router)
+app.include_router(summary_router)
 
 
 

@@ -49,3 +49,5 @@ def generate_summary(text: str) -> str:
     response = llm.invoke([system_message])
 
     return response.content
+
+
