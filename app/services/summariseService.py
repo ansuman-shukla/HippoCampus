@@ -1,7 +1,6 @@
 from langchain_google_genai import GoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-
-
+from google.generativeai.types.safety_types import HarmBlockThreshold, HarmCategory
 
 def generate_summary(text: str) -> str:
     llm = GoogleGenerativeAI(
@@ -10,6 +9,12 @@ def generate_summary(text: str) -> str:
         max_output_tokens=2048,
         top_p=0.95,
         top_k=1,
+        safety_settings={
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        }
     )
 
     system_message = SystemMessage(
@@ -44,11 +49,11 @@ def generate_summary(text: str) -> str:
             """
     )
 
-    response = llm.invoke([system_message])
-    print(f"LLM Response: {response.content}")
-    if not response.content:
-        raise ValueError("The LLM did not return any content.")
+    try:
+        response = llm.invoke([system_message])
+        return response
 
-    return response.content
-
-
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        return "Error occurred while generating summary."
+# Example usage:
