@@ -4,6 +4,7 @@ def bookmarkModel(item):
         'doc_id': item.get('doc_id', None),
         'user_id': item.get('user_id', None),
         'title': item.get('title', None),
+        'type': item.get('type', None),
         'note': item.get('note', None),
         'source_url': item.get('source_url', None),
         'site_name': item.get('site_name', None),

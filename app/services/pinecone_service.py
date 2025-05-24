@@ -136,8 +136,7 @@ async def search_vector_db(
 
     except Exception as e:
         logger.error("Search failed", extra={"user_id": namespace}, exc_info=True)
-        raise SearchExecutionError(f"Search failed: {str(e)}")
-
+        return "Search failed: " + str(e)
 
 async def delete_from_vector_db(doc_id: str, namespace: str):
     try:

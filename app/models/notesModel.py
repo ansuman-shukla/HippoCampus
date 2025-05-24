@@ -3,9 +3,10 @@ def note_model(item):
         'id': str(item.get('_id', '')) if item.get('_id') else None,
         'doc_id': item.get('doc_id', None),
         'user_id': item.get('user_id', None),
+        'type' : item.get('type', None),
         'title': item.get('title', None),
         'note': item.get('note', None),
-        'date': item.get('date', None)
+        'date': item.get('date', None)   
     }
 
 
