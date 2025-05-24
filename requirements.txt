@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-jose[cryptography]
+motor
+requests
+python-dotenv
+supabase
+pinecone
+python-dotenv
+langchain_community
+langchain
+langchain_google_genai
+pinecone_text
