@@ -1,5 +1,5 @@
 from langchain_google_genai import GoogleGenerativeAI
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 from google.generativeai.types.safety_types import HarmBlockThreshold, HarmCategory
 
 def generate_summary(text: str) -> str:
