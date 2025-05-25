@@ -71,13 +71,14 @@ async def create_note(note: dict, namespace: str):
         raise Exception(f"Error creating note: {str(e)}")
 
 
-async def search_notes(query: str, namespace: str) -> List[Dict]:
+async def search_notes(query: str, namespace: str , filter: dict = None) -> List[Dict]:
     """
     Search notes for a user based on a query.
     """
     return await search_vector_db(
         query=query,
         namespace=namespace,
+        filter=filter
     )
 
 

@@ -46,23 +46,22 @@ async def save_link(
 
 
 
-@router.get("/search")
+@router.post("/search")
 async def search_links(
     query: str,
-    request: Request
+    request: Request,
+    filter: dict = None,
 ):
-    
     """API endpoint for document search"""
-
 
     user_id = request.cookies.get("user_id")
     if not user_id:
         logger.warning("Unauthorized save attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
-    
+
     try:
         logger.info(f"Attempting to search document for user {user_id}")
-        result = await search_vector_db(query=query, namespace=user_id)
+        result = await search_vector_db(query=query, namespace=user_id, filter=filter)
         logger.info(f"Successfully searched document for user {user_id}")
         return result
     except InvalidRequestError as e:

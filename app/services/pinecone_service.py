@@ -128,15 +128,15 @@ async def search_vector_db(
                 page_content=f"Title: {metadata['title']}\nNote: {metadata['note']}",
                 metadata=metadata
             ))
+        
         if not documents:
             raise SearchExecutionError("No documents found matching query")
-        
 
         return documents
 
     except Exception as e:
         logger.error("Search failed", extra={"user_id": namespace}, exc_info=True)
-        return "Search failed: " + str(e)
+        return []  #return an empty list if search fails
 
 async def delete_from_vector_db(doc_id: str, namespace: str):
     try:
