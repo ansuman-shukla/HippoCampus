@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "HippoCampus",
+  "version": "1.0",
+  "description": "A brief description of my app",
+  "icons": {
+    "256": "HippoCampusLogo.png"
+  },
+  "permissions": [
+    "scripting", 
+    "activeTab",
+    "tabs",
+    "bookmarks",
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:5173/*",
+    "https://magical-famous-emu.ngrok-free.app/*",
+    "https://extension-auth.vercel.app/*",
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["index.html","error.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Toggle Sidebar"
+  }
+}
