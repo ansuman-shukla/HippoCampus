@@ -3,12 +3,13 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from app.routers.bookmarkRouters import router as bookmark_router
-from app.utils.jwt import decodeJWT, create_tokens
+from app.utils.jwt import decodeJWT, refresh_access_token, TokenExpiredError
 from app.services.user_service import create_user_if_not_exists
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.get_quotes import router as get_quotes_router
 from app.routers.notesRouter import router as notes_router
 from app.routers.summaryRouter import router as summary_router
+from app.routers.auth_router import router as auth_router
 from app.exceptions.global_exceptions import (
     global_exception_handler,
     AuthenticationError,
@@ -40,8 +41,11 @@ app = FastAPI(
 @app.middleware("http")
 async def authorisation_middleware(request: Request, call_next):
     """
-    Enhanced authentication middleware with graceful error handling
-    """
+    Enhanced authentication middleware with improved token refresh capability
+    """    # Skip auth for health check, auth endpoints, and documentation
+    if request.url.path in ["/health", "/health/detailed", "/docs", "/redoc", "/openapi.json"] or request.url.path.startswith("/auth/"):
+        return await call_next(request)
+    
     try:
         access_token = request.cookies.get("access_token")
         refresh_token = request.cookies.get("refresh_token")
@@ -54,12 +58,12 @@ async def authorisation_middleware(request: Request, call_next):
                 error_type="auth_error"
             )
 
-        if refresh_token:
-            # token = await create_tokens(refresh_token)
-            # return token
-            pass
+        payload = None
+        new_access_token = None
+        new_refresh_token = None
+        token_refreshed = False
 
-        # Validate the access token
+        # Try to validate the current access token
         try:
             payload = await decodeJWT(access_token)
             user_id = payload.get("sub")
@@ -72,11 +76,74 @@ async def authorisation_middleware(request: Request, call_next):
                     error_type="auth_error"
                 )
 
+        except TokenExpiredError:
+            logger.info("Access token expired, attempting refresh...")
+            
+            # Try to refresh the token if we have a refresh token
+            if not refresh_token:
+                logger.warning("No refresh token available for token refresh")
+                return create_error_response(
+                    "Access token expired and no refresh token available",
+                    status_code=401,
+                    error_type="auth_error"
+                )
+            
+            try:
+                # Refresh the access token
+                token_response = await refresh_access_token(refresh_token)
+                new_access_token = token_response.get("access_token")
+                new_refresh_token = token_response.get("refresh_token", refresh_token)
+                
+                if not new_access_token:
+                    logger.error("Failed to get new access token from refresh response")
+                    return create_error_response(
+                        "Token refresh failed",
+                        status_code=401,
+                        error_type="auth_error"
+                    )
+                
+                # Decode the new access token to get user info
+                payload = await decodeJWT(new_access_token)
+                user_id = payload.get("sub")
+                
+                if not user_id:
+                    logger.warning("New token payload missing user ID")
+                    return create_error_response(
+                        "Invalid refreshed token payload",
+                        status_code=401,
+                        error_type="auth_error"
+                    )
+                
+                token_refreshed = True
+                logger.info("Successfully refreshed access token")
+                
+            except HTTPException as refresh_error:
+                logger.error(f"Token refresh failed: {refresh_error.detail}")
+                return create_error_response(
+                    refresh_error.detail,
+                    status_code=refresh_error.status_code,
+                    error_type="auth_error"
+                )
+            except Exception as refresh_error:
+                logger.error(f"Unexpected token refresh error: {str(refresh_error)}")
+                return create_error_response(
+                    "Authentication service error",
+                    status_code=503,
+                    error_type="auth_service_error"
+                )
+
         except JWTError as e:
             logger.warning(f"JWT validation failed: {str(e)}")
             return create_error_response(
                 f"Invalid token: {str(e)}",
                 status_code=401,
+                error_type="auth_error"
+            )
+        except HTTPException as e:
+            logger.warning(f"Token validation failed: {e.detail}")
+            return create_error_response(
+                e.detail,
+                status_code=e.status_code,
                 error_type="auth_error"
             )
 
@@ -88,10 +155,45 @@ async def authorisation_middleware(request: Request, call_next):
             # Don't fail the request if user creation fails
             # Just log the error and continue
 
+        # Store user ID in request state for downstream use
+        request.state.user_id = user_id
+        request.state.user_payload = payload
+        
         # Continue the request
         response = await call_next(request)
 
-        # Post-processing: modify response (with error handling)
+        # Post-processing: set new tokens if they were refreshed
+        if token_refreshed:
+            try:
+                # Set new access token
+                if new_access_token:
+                    response.set_cookie(
+                        key="access_token",
+                        value=new_access_token,
+                        expires=int(time.time() + 3600),  # 1 hour
+                        httponly=True,
+                        secure=True,
+                        samesite="none"
+                    )
+                    logger.info("Updated access token cookie")
+                
+                # Set new refresh token if different
+                if new_refresh_token and new_refresh_token != refresh_token:
+                    response.set_cookie(
+                        key="refresh_token",
+                        value=new_refresh_token,
+                        expires=int(time.time() + 604800),  # 7 days
+                        httponly=True,
+                        secure=True,
+                        samesite="none"
+                    )
+                    logger.info("Updated refresh token cookie")
+
+            except Exception as e:
+                logger.error(f"Error setting refreshed token cookies: {str(e)}")
+                # Don't fail the request if cookie setting fails
+
+        # Set user-related cookies if not already set
         try:
             if request.cookies.get("user_id") is None:
                 response.set_cookie(
@@ -122,7 +224,7 @@ async def authorisation_middleware(request: Request, call_next):
                         httponly=True
                     )
         except Exception as e:
-            logger.error(f"Error setting cookies: {str(e)}")
+            logger.error(f"Error setting user cookies: {str(e)}")
             # Don't fail the request if cookie setting fails
 
         return response
@@ -192,46 +294,4 @@ app.include_router(bookmark_router)
 app.include_router(get_quotes_router)
 app.include_router(notes_router)
 app.include_router(summary_router)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# @app.get("/")
-# async def root():
-# async def auth_middleware(request: Request):
-#     # Get the access token from the request
-#     access_token = request.cookies.get("access_token")
-#     refresh_token = request.cookies.get("refresh_token")
-
-#     if not access_token:
-#         raise HTTPException(status_code=401, detail="Access token is missing")
-
-#     if refresh_token:
-#         token = await create_tokens(refresh_token)
-#         return token
-
-#     # Validate the access token
-#     try:
-#         payload = await decodeJWT(access_token)
-#         user_id = payload.get("sub")
-
-#     except JWTError as e:
-#         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
-
-#     create_user_if_not_exists(payload)
-
-
-#     # Continue the request
-#     request.state.user_id = user_id
-#     return {"message": "Pls do /save to save a link or /search to search for a link"}
+app.include_router(auth_router)

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "HippoCampus",
   "version": "1.0",
-  "description": "A brief description of my app",
+  "description": "Your second brain",
   "icons": {
     "256": "HippoCampusLogo.png"
   },
@@ -16,6 +16,8 @@
   ],
   "host_permissions": [
     "http://localhost:5173/*",
+    "http://127.0.0.1:8000/*",
+    "https://hippocampus-backend-vvv9.onrender.com/*",
     "https://magical-famous-emu.ngrok-free.app/*",
     "https://extension-auth.vercel.app/*",
     "<all_urls>"
