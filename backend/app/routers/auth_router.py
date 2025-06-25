@@ -1,10 +1,29 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from app.utils.jwt import refresh_access_token, decodeJWT
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+class LoginRequest(BaseModel):
+    access_token: str
+    refresh_token: str
+
+@router.post("/login")
+async def login(request: Request, login_details: LoginRequest):
+    try:
+        # Simulate cookie setting after successful login verification
+        # Real implementation should verify tokens and then set cookies
+        response = JSONResponse(status_code=200, content={"message": "Login successful"})
+        response.set_cookie("access_token", login_details.access_token, httponly=True, max_age=3600)
+        response.set_cookie("refresh_token", login_details.refresh_token, httponly=True, max_age=604800)
+        return response
+    except Exception as e:
+        logger.error(f"Login failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/refresh")
 async def refresh_token_endpoint(request: Request):
