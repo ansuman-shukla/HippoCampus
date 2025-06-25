@@ -78,21 +78,27 @@ const AnimatedRoutes = () => {
         console.log("Access Token: ", accessToken);
 
         if (accessToken) {
+          const refreshToken = localStorage.getItem("refresh_token");
+          const apiUrl = 'https://hippocampus-cyfo.onrender.com';
+          
+          // Set cookies for the correct backend URL
           await chrome.cookies.set({
-            url: import.meta.env.VITE_API_URL,
+            url: apiUrl,
             name: 'access_token',
             value: accessToken,
             path: '/',
-            domain: new URL(import.meta.env.VITE_API_URL).hostname
+            domain: 'hippocampus-cyfo.onrender.com'
           });
-
-          await chrome.cookies.set({
-            url: 'https://hippocampus-backend-vvv9.onrender.com',
-            name: 'access_token',
-            value: accessToken,
-            path: '/',
-            domain: 'hippocampus-backend-vvv9.onrender.com'
-          });
+          
+          if (refreshToken) {
+            await chrome.cookies.set({
+              url: apiUrl,
+              name: 'refresh_token',
+              value: refreshToken,
+              path: '/',
+              domain: 'hippocampus-cyfo.onrender.com'
+            });
+          }
 
           const cookie = await chrome.cookies.get({
             url: tab.url,

@@ -2,16 +2,8 @@
 // Uses cookie-based authentication handled by backend middleware
 
 const getApiBaseUrl = (): string => {
-  // Check if running in extension context
-  const isExtension = typeof window !== 'undefined' && 
-                     window.chrome && 
-                     window.chrome.runtime && 
-                     window.chrome.runtime.id;
-  
-  if (isExtension) {
-    return 'https://hippocampus-cyfo.onrender.com'; // Backend URL for extension
-  }
-  return import.meta.env.VITE_API_URL || 'https://hippocampus-cyfo.onrender.com';
+  // Always use the backend API URL for API calls
+  return 'https://hippocampus-cyfo.onrender.com';
 };
 
 // Enhanced error response interface matching backend error format
@@ -32,10 +24,21 @@ export const makeRequest = async <T = any>(
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
   
+  // Check if running in extension context
+  const isExtension = typeof window !== 'undefined' && 
+                     window.chrome && 
+                     window.chrome.runtime && 
+                     window.chrome.runtime.id;
+  
+  // Get access token from localStorage for extension context
+  const accessToken = isExtension ? localStorage.getItem('access_token') : null;
+  
   const defaultOptions: RequestInit = {
-    credentials: 'include', // Essential for cookie-based auth
+    credentials: isExtension ? 'omit' : 'include', // Use headers for extension, cookies for web
     headers: {
       'Content-Type': 'application/json',
+      // Add Authorization header for extension context
+      ...(isExtension && accessToken ? { 'access_token': accessToken } : {}),
       ...options.headers,
     },
     ...options,

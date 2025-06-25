@@ -29,12 +29,9 @@ const isExtension = (): boolean => {
   }
 };
 
-// Get the appropriate API base URL
+// Get the appropriate API base URL (always the backend)
 const getApiBaseUrl = (): string => {
-  if (isExtension()) {
-    return 'https://hippocampus-cyfo.onrender.com'; // Backend URL for extension
-  }
-  return import.meta.env.VITE_API_URL || 'https://hippocampus-cyfo.onrender.com';
+  return 'https://hippocampus-cyfo.onrender.com';
 };
 
 /**
@@ -47,10 +44,16 @@ export const makeAuthenticatedRequest = async (
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
   
+  // Check if running in extension context
+  const inExtension = isExtension();
+  const accessToken = inExtension ? localStorage.getItem('access_token') : null;
+  
   const defaultOptions: RequestInit = {
-    credentials: 'include', // This ensures cookies are sent with requests
+    credentials: inExtension ? 'omit' : 'include', // Use headers for extension, cookies for web
     headers: {
       'Content-Type': 'application/json',
+      // Add access_token header for extension context
+      ...(inExtension && accessToken ? { 'access_token': accessToken } : {}),
       ...options.headers,
     },
     ...options,
@@ -211,11 +214,17 @@ export const logout = async (): Promise<AuthResponse> => {
  */
 export const getAuthStatus = async (): Promise<AuthResponse> => {
   try {
+    // Check if running in extension context
+    const inExtension = isExtension();
+    const accessToken = inExtension ? localStorage.getItem('access_token') : null;
+    
     const response = await fetch(`${getApiBaseUrl()}/auth/status`, {
       method: 'GET',
-      credentials: 'include',
+      credentials: inExtension ? 'omit' : 'include',
       headers: {
         'Content-Type': 'application/json',
+        // Add access_token header for extension context
+        ...(inExtension && accessToken ? { 'access_token': accessToken } : {}),
       },
     });
 

@@ -183,7 +183,7 @@ export const useAuth = () => {
       
       // Call backend logout endpoint (clears all server-side cookies)
       // Backend clears: access_token, refresh_token, user_id, user_name, user_picture
-      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+      await fetch(`https://hippocampus-cyfo.onrender.com/auth/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -227,7 +227,7 @@ export const useAuth = () => {
   // Manually refresh token (backend auto-refreshes via middleware)
   const refreshToken = useCallback(async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/refresh`, {
+      const response = await fetch(`https://hippocampus-cyfo.onrender.com/auth/refresh`, {
         method: 'POST',
         credentials: 'include', // Backend reads refresh_token from cookies
         headers: {
@@ -270,9 +270,9 @@ export const useAuth = () => {
   const setAuthCookies = async (accessToken: string, refreshToken?: string) => {
     if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
       try {
-        // Set cookies for API domain with exact settings backend expects
-        const apiUrl = import.meta.env.VITE_API_URL;
-        const apiDomain = new URL(apiUrl).hostname;
+        // Set cookies for backend API domain with exact settings backend expects
+        const apiUrl = 'https://hippocampus-cyfo.onrender.com';
+        const apiDomain = 'hippocampus-cyfo.onrender.com';
 
         // Access token cookie (expires in 1 hour, matching backend)
         await window.chrome.cookies.set({
@@ -314,7 +314,7 @@ export const useAuth = () => {
   const clearAuthCookies = async () => {
     if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL;
+        const apiUrl = 'https://hippocampus-cyfo.onrender.com';
         
         // Clear all cookies that backend authentication middleware sets
         const authCookieNames = [
