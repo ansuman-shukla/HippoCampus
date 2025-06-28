@@ -317,9 +317,7 @@ const SearchResponse: React.FC = () => {
               <Cards
                 key={index}
                 title={card.title}
-                description={(card.fullDescription.length > 10) ?
-                  card.fullDescription.slice(0, 66) + "..." :
-                  card.fullDescription}
+                description={card.fullDescription}
                 bgColor={card.bgColor}
                 onClick={() => setSelectedIndex(index)}
                 isSelected={false}
@@ -378,7 +376,7 @@ const SearchResponse: React.FC = () => {
             <Cards
               key={index}
               title={item.title}
-              description={"No description, link : " + item.url.slice(0, 8) + "..."}
+              description={"No description, link: " + item.url}
               bgColor={getNextColor()}
               onClick={() => window.open(item.url)}
               isSelected={false}

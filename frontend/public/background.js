@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         'access_token': message.cookies
       }
       }).then(response => response.json()),
-      fetch(`https://hippocampus-cyfo.onrender.com/notes`, {
+      fetch(`https://hippocampus-cyfo.onrender.com/notes/`, {
       method: 'GET',
       headers: { 
         'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   else if (message.action === "saveNotes") {
-    fetch('https://hippocampus-cyfo.onrender.com/notes', {
+    fetch('https://hippocampus-cyfo.onrender.com/notes/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -110,7 +110,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   else if (message.action === "getQuotes") {
-    fetch('https://hippocampus-cyfo.onrender.com/quotes', {
+    fetch('https://hippocampus-cyfo.onrender.com/quotes/', {
       method: 'GET',
       headers: { 'access_token': message.cookies }
     })
