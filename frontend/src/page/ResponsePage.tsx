@@ -101,6 +101,11 @@ export default function ResponsePage() {
       setisError("Link or Title missing!")
       return
     }
+    else if (currentTab === "notes" && (NotesTitle.trim() === "" || extraNote.trim() === "")) {
+      setnotSubmitted(true);
+      setisError("Title and Note are required!")
+      return
+    }
     else {
       setIsLoading(true);
       setisError('')
