@@ -319,6 +319,7 @@ export default function ResponsePage() {
           setExtraNote={setExtraNote}
           NotesTitle={NotesTitle}
           setNotesTitle={setNotesTitle}
+          bgClr={bgClr}
         />
         
       </div>

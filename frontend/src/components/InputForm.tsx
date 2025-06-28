@@ -20,6 +20,7 @@ interface Props {
   setExtraNote: (note: string) => void;
   NotesTitle: string;
   setNotesTitle: (title: string) => void;
+  bgClr?: string; // Add background color prop to detect error state
 }
 interface FormData {
   link: string;
@@ -43,7 +44,8 @@ export default function InputForm({
   NotesTitle,
   setNotesTitle,
   currentTab,
-  setCurrentTab
+  setCurrentTab,
+  bgClr
 }: Props) {
   const [showNotes, setShowNotes] = useState(false);
   
@@ -138,7 +140,7 @@ export default function InputForm({
       </div>)}
 
         <div className="flex justify-center mt-0">
-          {!showOnlyOne && !Error && (
+          {!showOnlyOne && !Error && bgClr !== "--primary-orange" && (
             <button
               type="button"
               className="text-neutral-700 bg-white/20 rounded-full px-4 py-2 flex justify-center items-center gap-1 mt-2  text-sm transition hover:text-black"
