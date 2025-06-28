@@ -52,11 +52,45 @@ export default function ResponsePage() {
   }, []);
 
   useEffect(() => {
-       chrome.cookies.get({url:'https://hippocampus-cyfo.onrender.com/',name:'user_name'},(cookie)=>{
-        if(cookie){
-          setSubTxt(cookie.value.replace(/"/g, "").split(" ")[0]);
+    // First check localStorage for cached username
+    const cachedUsername = localStorage.getItem('user_name');
+    
+    if (cachedUsername) {
+      // Process cached username to ensure it follows the same rules (first name, max 8 chars)
+      const firstName = cachedUsername.split(" ")[0];
+      const processedUsername = firstName.length > 8 ? firstName.substring(0, 8) : firstName;
+      
+      console.log('Using cached username from localStorage:', processedUsername);
+      setSubTxt(processedUsername);
+      
+      // Update localStorage if the cached value was different (full name)
+      if (processedUsername !== cachedUsername) {
+        localStorage.setItem('user_name', processedUsername);
+        console.log('Updated cached username to processed version');
       }
-    });
+    } else {
+      // If not in localStorage, fetch from cookies (existing logic)
+      console.log('Username not found in localStorage, fetching from cookies...');
+      chrome.cookies.get({url:'https://hippocampus-cyfo.onrender.com/',name:'user_name'},(cookie)=>{
+        if(cookie){
+          // Extract first name and truncate to 8 characters if needed
+          const fullName = cookie.value.replace(/"/g, "");
+          const firstName = fullName.split(" ")[0];
+          const username = firstName.length > 8 ? firstName.substring(0, 8) : firstName;
+          
+          console.log('Username processed from cookies:', username);
+          
+          // Set the username in the UI
+          setSubTxt(username);
+          
+          // Cache it in localStorage for future use
+          localStorage.setItem('user_name', username);
+          console.log('Username cached in localStorage for future use');
+        } else {
+          console.log('No username found in cookies');
+        }
+      });
+    }
   }, []);
 
 
