@@ -95,9 +95,9 @@ isSearchAll
              <div className="w-full flex justify-end mb-2" style={{ backgroundColor: `var(${bgColor})` }}>
                 {
                   RedirectUrl ?
-                  <RiArrowRightUpLine size={28} className="cursor-pointer" onClick={()=>{isSelected?window.open(RedirectUrl):null}}/>
+                  <RiArrowRightUpLine size={28} className={type === "Note" ? "cursor-default opacity-50" : "cursor-pointer"} onClick={()=>{isSelected && type !== "Note" ? window.open(RedirectUrl) : null}}/>
                   :
-                  <MdOutlineEditNote size={28} className="cursor-pointer" onClick={()=>{isSelected?window.open(RedirectUrl):null}}/>
+                  <MdOutlineEditNote size={28} className={type === "Note" ? "cursor-default opacity-50" : "cursor-pointer"} onClick={()=>{isSelected && type !== "Note" ? window.open(RedirectUrl) : null}}/>
                 }
               </div>
               {isSelected && type !== "Note" && RedirectUrl && (
