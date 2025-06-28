@@ -117,15 +117,15 @@ export default function InputForm({
           value={NotesTitle}
           onChange={e => setNotesTitle(e.target.value)}
           className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black"
-          placeholder="Write your extra notes here..."
+          placeholder="Write your note here..."
         />
-        <label className="block text-md font-SansMono400 text-[15px] ">Extra Notes:</label>
+        <label className="block text-md font-SansMono400 text-[15px] ">Note:</label>
         <textarea
           rows={2}
           value={extraNote}
           onChange={e => setExtraNote(e.target.value)}
           className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black"
-          placeholder="Write your extra notes here..."
+          placeholder="Write your extra note here..."
         />
       </div>)}
 
