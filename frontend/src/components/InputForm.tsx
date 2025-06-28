@@ -98,7 +98,7 @@ export default function InputForm({
             rows={2}
             value={formData.note}
             onChange={handleChange}
-            className="w-full border-b border-black bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-1"
+            className="w-full border-b border-black bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-1 scrollbar-hide"
             placeholder="Enter a descriptive note for better search results"
             disabled={isLoading}
           />
@@ -116,7 +116,7 @@ export default function InputForm({
           rows={1}
           value={NotesTitle}
           onChange={e => setNotesTitle(e.target.value)}
-          className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black"
+          className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black scrollbar-hide"
           placeholder="Write your note here..."
         />
         <label className="block text-md font-SansMono400 text-[15px] ">Note:</label>
@@ -124,7 +124,7 @@ export default function InputForm({
           rows={2}
           value={extraNote}
           onChange={e => setExtraNote(e.target.value)}
-          className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black"
+          className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black scrollbar-hide"
           placeholder="Write your extra note here..."
         />
       </div>)}
