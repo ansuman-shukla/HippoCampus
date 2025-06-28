@@ -164,7 +164,7 @@ export default function ResponsePage() {
           setSubTxt("Something went wrong")
           setLftBtnTxt("BACK")
           setBtnTxtClr("--primary-orange")
-          setRtBtnTxt("RETRY :)")
+          setRtBtnTxt("RETRY")
         }
       }) : (
         chrome.runtime.sendMessage({ action: "saveNotes", data: {
