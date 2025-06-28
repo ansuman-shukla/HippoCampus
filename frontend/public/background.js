@@ -79,8 +79,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       },
       body: JSON.stringify(message.data)
     })
-      .then(response => response.json())
+      .then(response => {
+        console.log("Submit response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
+        console.log("Submit success:", data);
         sendResponse({ success: true, data });
       })
       .catch(error => {
@@ -98,12 +105,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       },
       body: JSON.stringify(message.data)
     })
-      .then(response => response.json())
+      .then(response => {
+        console.log("SaveNotes response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
+        console.log("SaveNotes success:", data);
         sendResponse({ success: true, data });
       })
       .catch(error => {
-        console.error("Submission error:", error);
+        console.error("SaveNotes error:", error);
         sendResponse({ success: false, error: error.message });
       });
     return true;

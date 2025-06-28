@@ -42,11 +42,19 @@ export default function InputForm({
   setExtraNote,
   NotesTitle,
   setNotesTitle,
+  currentTab,
   setCurrentTab
 }: Props) {
   const [showNotes, setShowNotes] = useState(false);
   
-  
+  // Reset showNotes when currentTab changes externally (e.g., from back button)
+  useEffect(() => {
+    if (currentTab === "submit") {
+      setShowNotes(false);
+    } else if (currentTab === "notes") {
+      setShowNotes(true);
+    }
+  }, [currentTab]);
 
   useEffect(()=>{
     if(showNotes){
@@ -130,7 +138,7 @@ export default function InputForm({
       </div>)}
 
         <div className="flex justify-center mt-0">
-          {!showOnlyOne && (
+          {!showOnlyOne && !Error && (
             <button
               type="button"
               className="text-neutral-700 bg-white/20 rounded-full px-4 py-2 flex justify-center items-center gap-1 mt-2  text-sm transition hover:text-black"

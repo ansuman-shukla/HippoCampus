@@ -146,7 +146,8 @@ export default function ResponsePage() {
       setnotSubmitted(false);
 
      (currentTab === "submit" ? chrome.runtime.sendMessage({ action: "submit", data: formData }, (response) => {
-        if (response) {
+        console.log("Frontend received response:", response);
+        if (response && response.success) {
           setIsLoading(false);
           setbgClr("--primary-green")
           setTitle("Successful !")
@@ -170,7 +171,8 @@ export default function ResponsePage() {
           title: NotesTitle,
           note: extraNote
         } }, (response) => {
-          if (response) {
+          console.log("Frontend received saveNotes response:", response);
+          if (response && response.success) {
             setIsLoading(false);
             setbgClr("--primary-green")
             setTitle("Successful !")
@@ -187,7 +189,7 @@ export default function ResponsePage() {
             setSubTxt("Something went wrong")
             setLftBtnTxt("BACK")
             setBtnTxtClr("--primary-orange")
-            setRtBtnTxt("RETRY :)")
+            setRtBtnTxt("RETRY")
           }
         })
       )
@@ -212,23 +214,53 @@ export default function ResponsePage() {
         }
       });
     }
+    else if (leftBtnTxt === "BACK") {
+      // Reset the form to its initial state
+      setFormData({
+        link: '',
+        title: '',
+        note: ''
+      });
+      setExtraNote("");
+      setNotesTitle("");
+      setbgClr("--primary-yellow");
+      setTitle(new Date().getHours()<5 ? "Go & Sleep," : 
+                new Date().getHours() < 12 ? "Good Morning," :
+                new Date().getHours() < 17 ? "Good Afternoon," :
+                new Date().getHours() < 20 ? "Good Evening," : "Good Night,");
+      
+      // Restore the username from localStorage or fetch from cookies
+      const cachedUsername = localStorage.getItem('user_name');
+      if (cachedUsername) {
+        setSubTxt(cachedUsername);
+      } else {
+        // Fallback to fetching from cookies if not in localStorage
+        chrome.cookies.get({url:'https://hippocampus-cyfo.onrender.com/',name:'user_name'},(cookie)=>{
+          if(cookie){
+            const fullName = cookie.value.replace(/"/g, "");
+            const firstName = fullName.split(" ")[0];
+            const username = firstName.length > 8 ? firstName.substring(0, 8) : firstName;
+            setSubTxt(username);
+            localStorage.setItem('user_name', username);
+          } else {
+            setSubTxt("User"); // Default fallback
+          }
+        });
+      }
+      
+      setLftBtnTxt("SUMMARIZE");
+      setBtnTxtClr("--primary-yellow");
+      setRtBtnTxt("MEMORIZE");
+      setnotSubmitted(true);
+      setisError('');
+      setShowOnlyOne(false);
+      setCurrentTab("submit");
+      // Re-fetch the current tab info
+      setDoneNumber(0);
+    }
     else{
-      // setFormData({
-      //   link: '',
-      //   title: '',
-      //   note: ''
-      // });
-      // setbgClr("--primary-yellow")
-      // setLftBtnTxt("CLEAR")
-      // setBtnTxtClr("--primary-yellow")
-      // setRtBtnTxt("SUBMIT")
-      // setnotSubmitted(true);
-      // setisError('')
-      // setShowOnlyOne(false);
       Navigate("/summarize");
     }
-
-    
   };
 
   return (
