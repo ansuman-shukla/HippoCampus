@@ -266,7 +266,7 @@ export default function ResponsePage() {
   return (
     <>
 
-      <div className={`max-w-md bg-[var(${bgClr})] rounded-lg px-9 w-[420px] h-[500px] flex flex-col justify-between py-10
+      <div className={`max-w-md bg-[var(${bgClr})] rounded-lg ${showOnlyOne ? 'px-10 py-11' : 'px-9 py-12'} w-[420px] h-[500px] flex flex-col justify-between
       border border-black`}>
 
 
