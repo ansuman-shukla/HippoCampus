@@ -20,16 +20,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     Promise.all([
       fetch(`https://hippocampus-cyfo.onrender.com/links/get`, {
       method: 'GET',
+      credentials: 'include',
       headers: { 
-        'Content-Type': 'application/json',
-        'access_token': message.cookies
+        'Content-Type': 'application/json'
       }
       }).then(response => response.json()),
       fetch(`https://hippocampus-cyfo.onrender.com/notes/`, {
       method: 'GET',
+      credentials: 'include',
       headers: { 
-        'Content-Type': 'application/json',
-        'access_token': message.cookies }
+        'Content-Type': 'application/json'
+      }
       }).then(response => response.json())
     ])
     .then(([linksData, notesData]) => {
@@ -48,9 +49,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.action === "search") {
     const fetchOptions = {
       method: 'POST',
+      credentials: 'include',
       headers: {
-        'Content-Type': 'application/json',
-        'access_token': message.cookies
+        'Content-Type': 'application/json'
       }
     };
 
@@ -72,10 +73,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.action === "submit") {
     fetch('https://hippocampus-cyfo.onrender.com/links/save', {
       method: 'POST',
+      credentials: 'include',
       headers: {
-        'Content-Type': 'application/json',
-        'access_token': message.cookies,
-
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(message.data)
     })
@@ -92,9 +92,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.action === "saveNotes") {
     fetch('https://hippocampus-cyfo.onrender.com/notes/', {
       method: 'POST',
+      credentials: 'include',
       headers: {
-        'Content-Type': 'application/json',
-        'access_token': message.cookies,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(message.data)
     })
@@ -112,7 +112,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.action === "getQuotes") {
     fetch('https://hippocampus-cyfo.onrender.com/quotes/', {
       method: 'GET',
-      headers: { 'access_token': message.cookies }
+      credentials: 'include'
     })
       .then(response => response.json())
       .then(data => sendResponse({ success: true, data }))
@@ -122,7 +122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.action === "delete") {
     fetch(`https://hippocampus-cyfo.onrender.com/links/delete?doc_id_pincone=${message.query}`, {
       method: 'DELETE',
-      headers: { 'access_token': message.cookies }
+      credentials: 'include'
     })
       .then(response => response.json())
       .then(data => sendResponse({ success: true, data }))
@@ -132,7 +132,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.action === "generateSummaryforContent") {
     fetch(`https://hippocampus-cyfo.onrender.com/summary/generate`, {
       method: 'POST',
-      headers: { 'access_token': message.cookies },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: message.content })
     })
       .then(response => response.json())

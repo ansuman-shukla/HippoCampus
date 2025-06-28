@@ -24,21 +24,10 @@ export const makeRequest = async <T = any>(
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
   
-  // Check if running in extension context
-  const isExtension = typeof window !== 'undefined' && 
-                     window.chrome && 
-                     window.chrome.runtime && 
-                     window.chrome.runtime.id;
-  
-  // Get access token from localStorage for extension context
-  const accessToken = isExtension ? localStorage.getItem('access_token') : null;
-  
   const defaultOptions: RequestInit = {
-    credentials: isExtension ? 'omit' : 'include', // Use headers for extension, cookies for web
+    credentials: 'include', // Always use cookies - backend handles auth
     headers: {
       'Content-Type': 'application/json',
-      // Add Authorization header for extension context
-      ...(isExtension && accessToken ? { 'access_token': accessToken } : {}),
       ...options.headers,
     },
     ...options,

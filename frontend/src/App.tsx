@@ -38,25 +38,108 @@ const AnimatedRoutes = () => {
 
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
-    chrome.cookies.getAll({ url: "https://extension-auth.vercel.app" }, (cookies) => {
+    chrome.cookies.getAll({ url: "https://extension-auth.vercel.app" }, async (cookies) => {
       const accessToken = cookies.find((cookie) => cookie.name === "access_token")?.value;
       const refreshToken = cookies.find((cookie) => cookie.name === "refresh_token")?.value;
 
       if (accessToken && location.pathname === "/") {
-        // Store tokens and set up backend authentication
-        localStorage.setItem("access_token", accessToken);
-        if (refreshToken) {
-          localStorage.setItem("refresh_token", refreshToken);
+        try {
+          console.log('External auth tokens detected, transferring to backend...');
+          // Wait for cookies to be set before navigating
+          await setBackendCookies(accessToken, refreshToken);
+          
+          // Double-check that cookies were properly set
+          const verificationCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
+            chrome.cookies.get({
+              url: 'https://hippocampus-cyfo.onrender.com',
+              name: 'access_token'
+            }, (cookie) => {
+              resolve(cookie);
+            });
+          });
+          
+          if (verificationCookie) {
+            console.log('Backend cookies set successfully, navigating to submit');
+            Navigate("/submit");
+          } else {
+            throw new Error('Cookie verification failed');
+          }
+        } catch (error) {
+          console.error('Failed to set backend cookies:', error);
+          // Retry after a short delay
+          setTimeout(() => checkForExternalAuth(), 2000);
         }
-        
-        // Let useAuth hook handle the backend cookie setup
-        checkAuthStatus();
-        Navigate("/submit");
       } else {
         setTimeout(checkForExternalAuth, 1000);
       }
     });
   }
+
+  // Helper function to set backend cookies directly from external auth
+  const setBackendCookies = async (accessToken: string, refreshToken?: string) => {
+    try {
+      const apiUrl = 'https://hippocampus-cyfo.onrender.com';
+      
+      // Set access token cookie and wait for completion
+      await new Promise<void>((resolve, reject) => {
+        chrome.cookies.set({
+          url: apiUrl,
+          name: 'access_token',
+          value: accessToken,
+          path: '/',
+          domain: 'hippocampus-cyfo.onrender.com',
+          secure: true,
+          sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
+          expirationDate: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+        }, (cookie) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else if (cookie) {
+            console.log('Access token cookie set successfully');
+            resolve();
+          } else {
+            reject(new Error('Failed to set access token cookie'));
+          }
+        });
+      });
+      
+      // Set refresh token cookie if available and wait for completion
+      if (refreshToken) {
+        await new Promise<void>((resolve, reject) => {
+          chrome.cookies.set({
+            url: apiUrl,
+            name: 'refresh_token',
+            value: refreshToken,
+            path: '/',
+            domain: 'hippocampus-cyfo.onrender.com',
+            secure: true,
+            sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
+            expirationDate: Math.floor(Date.now() / 1000) + 604800 // 7 days
+          }, (cookie) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else if (cookie) {
+              console.log('Refresh token cookie set successfully');
+              resolve();
+            } else {
+              reject(new Error('Failed to set refresh token cookie'));
+            }
+          });
+        });
+      }
+
+      // Verify authentication with backend after cookies are set
+      await checkAuthStatus();
+      
+      // Small delay to ensure cookies are propagated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('Backend cookies set from external auth');
+    } catch (error) {
+      console.error('Error setting backend cookies:', error);
+      throw error; // Re-throw to be caught by caller
+    }
+  };
   
   useEffect(() => {
     checkForExternalAuth();
@@ -74,74 +157,44 @@ const AnimatedRoutes = () => {
 
 
       try {
-        const accessToken = localStorage.getItem("access_token");
-        console.log("Access Token: ", accessToken);
+        // Check if user is authenticated via backend cookies
+        const cookie = await chrome.cookies.get({
+          url: 'https://hippocampus-cyfo.onrender.com',
+          name: 'access_token',
+        });
 
-        if (accessToken) {
-          const refreshToken = localStorage.getItem("refresh_token");
-          const apiUrl = 'https://hippocampus-cyfo.onrender.com';
-          
-          // Set cookies for the correct backend URL
-          await chrome.cookies.set({
-            url: apiUrl,
-            name: 'access_token',
-            value: accessToken,
-            path: '/',
-            domain: 'hippocampus-cyfo.onrender.com'
-          });
-          
-          if (refreshToken) {
-            await chrome.cookies.set({
-              url: apiUrl,
-              name: 'refresh_token',
-              value: refreshToken,
-              path: '/',
-              domain: 'hippocampus-cyfo.onrender.com'
-            });
-          }
+        if (cookie && location.pathname === "/") {
+          Navigate("/submit");
+        }
 
-          const cookie = await chrome.cookies.get({
-            url: tab.url,
-            name: 'access_token',
-          });
-          if(localStorage.getItem("quotes")){
-            console.log("found Quotes")
-            setQuotes(JSON.parse(localStorage.getItem("quotes") || "[]"));
-            console.log("have set the quotes")
-          }else{chrome.runtime.sendMessage(
+        // Load quotes from localStorage or fetch from backend
+        if(localStorage.getItem("quotes")){
+          console.log("found Quotes")
+          setQuotes(JSON.parse(localStorage.getItem("quotes") || "[]"));
+          console.log("have set the quotes")
+        }else{
+          chrome.runtime.sendMessage(
             {
-              cookies: localStorage.getItem("access_token"),
               action: "getQuotes"
             },
             (response) => {
               if (response.success) {
-    
                 if (response.data) {
                   const filteredQuotes = response.data.filter((quote: string) => quote.length > 0);
                   setQuotes(prev => [
                     ...new Set([...prev, ...filteredQuotes])
-                    
                   ]);
-                  console.log("GOT QUOTES FROM BAKCEND")
+                  console.log("GOT QUOTES FROM BACKEND")
                   localStorage.setItem("quotes", JSON.stringify(filteredQuotes));
                   console.log("Quotes are set")
                 }
-    
               } else {
               }
             }
-          );}
-
-
-          if (cookie && location.pathname === "/") {
-            Navigate("/submit");
-
-
-          }
+          );
         }
       } catch (error) {
         console.error("Error handling auth flow:", error);
-
       }
 
 

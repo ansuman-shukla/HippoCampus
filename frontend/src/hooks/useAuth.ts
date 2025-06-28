@@ -91,12 +91,6 @@ export const useAuth = () => {
       if (data.session?.access_token) {
         // Set tokens in cookies for backend communication
         await setAuthCookies(data.session.access_token, data.session.refresh_token);
-        
-        // Keep minimal backup in localStorage for extension functionality
-        localStorage.setItem('access_token', data.session.access_token);
-        if (data.session.refresh_token) {
-          localStorage.setItem('refresh_token', data.session.refresh_token);
-        }
 
         // Verify authentication with backend (backend middleware will set secure httpOnly cookies)
         await checkAuthStatus();
@@ -152,11 +146,6 @@ export const useAuth = () => {
       // Auto sign-in after signup
       if (data.session?.access_token) {
         await setAuthCookies(data.session.access_token, data.session.refresh_token);
-        // Keep minimal backup in localStorage for extension functionality
-        localStorage.setItem('access_token', data.session.access_token);
-        if (data.session.refresh_token) {
-          localStorage.setItem('refresh_token', data.session.refresh_token);
-        }
         await checkAuthStatus();
         return { success: true, data: data.session };
       }
@@ -236,15 +225,7 @@ export const useAuth = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
         // Backend automatically sets new cookies in response headers
-        // Update localStorage backup if new tokens provided
-        if (data.access_token) {
-          localStorage.setItem('access_token', data.access_token);
-        }
-        if (data.refresh_token) {
-          localStorage.setItem('refresh_token', data.refresh_token);
-        }
         // Update auth state
         await checkAuthStatus();
         return { success: true };
@@ -342,14 +323,6 @@ export const useAuth = () => {
   // Check for existing auth on mount and listen for Supabase auth changes
   useEffect(() => {
     const initAuth = async () => {
-      // First check if we have tokens from external auth flow (like extension auth)
-      const accessToken = localStorage.getItem('access_token');
-      
-      if (accessToken) {
-        // Set cookies for backend communication (extension context only)
-        await setAuthCookies(accessToken, localStorage.getItem('refresh_token') || undefined);
-      }
-      
       // Always check auth status with backend (backend is source of truth)
       // Backend middleware will handle token validation and refresh automatically
       await checkAuthStatus();
@@ -364,10 +337,6 @@ export const useAuth = () => {
         
         if (event === 'SIGNED_IN' && session?.access_token) {
           await setAuthCookies(session.access_token, session.refresh_token);
-          localStorage.setItem('access_token', session.access_token);
-          if (session.refresh_token) {
-            localStorage.setItem('refresh_token', session.refresh_token);
-          }
           await checkAuthStatus();
         } else if (event === 'SIGNED_OUT') {
           await clearAuthCookies();

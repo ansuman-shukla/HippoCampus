@@ -44,16 +44,10 @@ export const makeAuthenticatedRequest = async (
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
   
-  // Check if running in extension context
-  const inExtension = isExtension();
-  const accessToken = inExtension ? localStorage.getItem('access_token') : null;
-  
   const defaultOptions: RequestInit = {
-    credentials: inExtension ? 'omit' : 'include', // Use headers for extension, cookies for web
+    credentials: 'include', // Always use cookies - backend handles auth
     headers: {
       'Content-Type': 'application/json',
-      // Add access_token header for extension context
-      ...(inExtension && accessToken ? { 'access_token': accessToken } : {}),
       ...options.headers,
     },
     ...options,
@@ -214,17 +208,11 @@ export const logout = async (): Promise<AuthResponse> => {
  */
 export const getAuthStatus = async (): Promise<AuthResponse> => {
   try {
-    // Check if running in extension context
-    const inExtension = isExtension();
-    const accessToken = inExtension ? localStorage.getItem('access_token') : null;
-    
     const response = await fetch(`${getApiBaseUrl()}/auth/status`, {
       method: 'GET',
-      credentials: inExtension ? 'omit' : 'include',
+      credentials: 'include', // Always use cookies - backend handles auth
       headers: {
         'Content-Type': 'application/json',
-        // Add access_token header for extension context
-        ...(inExtension && accessToken ? { 'access_token': accessToken } : {}),
       },
     });
 

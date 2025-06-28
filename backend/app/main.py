@@ -50,6 +50,13 @@ async def authorisation_middleware(request: Request, call_next):
         access_token = request.cookies.get("access_token")
         refresh_token = request.cookies.get("refresh_token")
 
+        # Fallback to headers if cookies are not available (for edge cases)
+        if not access_token:
+            access_token = request.headers.get("access_token")
+            
+        if not refresh_token:
+            refresh_token = request.headers.get("refresh_token")
+
         if not access_token:
             logger.warning(f"Missing access token for {request.method} {request.url}")
             return create_error_response(

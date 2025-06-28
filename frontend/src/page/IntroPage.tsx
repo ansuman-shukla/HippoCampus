@@ -12,7 +12,6 @@ const Intro = () => {
           name: 'access_token',
       }, function(cookie) {
           if (cookie) {
-              localStorage.setItem('access_token', cookie.value);
               Navigate("/submit");
           } else {
               window.open("https://extension-auth.vercel.app");

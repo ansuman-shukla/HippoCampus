@@ -39,7 +39,7 @@ export default function SearchPage({ Quote }: Props) {
 
     const handleSearch = () => {
         setIsLoading(true);
-        chrome.runtime.sendMessage({ action: "search", query: query, type: activeTab, cookies: localStorage.getItem("access_token") },
+        chrome.runtime.sendMessage({ action: "search", query: query, type: activeTab },
             (response) => {
                 if (response) {
                     if (response.data?.detail === "Search failed: No documents found matching query") {
@@ -70,7 +70,7 @@ export default function SearchPage({ Quote }: Props) {
     };
     const handleSearchAll = () => {
         setIsLoading(true);
-        chrome.runtime.sendMessage({ action: "searchAll", cookies: localStorage.getItem("access_token") },
+        chrome.runtime.sendMessage({ action: "searchAll" },
             (response) => {
                 if (response) {
                     if (response.data?.detail === "Search failed: No documents found matching query") {

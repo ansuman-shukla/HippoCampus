@@ -238,7 +238,7 @@ const SearchResponse: React.FC = () => {
     if (selectedIndex !== null) {
     } else {
     }
-    chrome.runtime.sendMessage({ action: "delete", query: (selectedIndex !== null ? Card[selectedIndex].ID : ""), cookies: localStorage.getItem("access_token") },
+                chrome.runtime.sendMessage({ action: "delete", query: (selectedIndex !== null ? Card[selectedIndex].ID : "") },
 
       (response) => {
         if (response) {

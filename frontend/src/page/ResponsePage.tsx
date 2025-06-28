@@ -111,7 +111,7 @@ export default function ResponsePage() {
       setisError('')
       setnotSubmitted(false);
 
-     (currentTab === "submit" ? chrome.runtime.sendMessage({ action: "submit", data: formData, cookies: localStorage.getItem("access_token") }, (response) => {
+     (currentTab === "submit" ? chrome.runtime.sendMessage({ action: "submit", data: formData }, (response) => {
         if (response) {
           setIsLoading(false);
           setbgClr("--primary-green")
@@ -135,7 +135,7 @@ export default function ResponsePage() {
         chrome.runtime.sendMessage({ action: "saveNotes", data: {
           title: NotesTitle,
           note: extraNote
-        }, cookies: localStorage.getItem("access_token") }, (response) => {
+        } }, (response) => {
           if (response) {
             setIsLoading(false);
             setbgClr("--primary-green")
