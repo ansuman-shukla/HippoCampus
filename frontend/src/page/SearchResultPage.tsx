@@ -287,7 +287,7 @@ const SearchResponse: React.FC = () => {
 
       style={{ backgroundColor: responseData.length === 0 ? 'var(--primary-red)' : 'var(--primary-white)' }}
 
-      className={`relative max-w-md  rounded-lg w-[420px] max-h-[90vh] flex flex-col justify-center border border-black py-0 overflow-hidden`}>
+      className={`relative max-w-md  rounded-lg w-[420px] h-[500px] flex flex-col justify-center border border-black py-0 overflow-hidden`}>
       {Card.length === 0 || Card.filter(card => !DeletedBookmarks.has(card.ID)).length === 0 ? (
         <p className='text-center text-2xl black mb-3 pb-7 nyr-semibold'>Oops ! No Bookmarks found</p>
       ) : (<>
