@@ -17,7 +17,7 @@
   "host_permissions": [
     "http://localhost:5173/*",
     "https://magical-famous-emu.ngrok-free.app/*",
-    "https://extension-auth.vercel.app/*",
+    "https://e399c7e9.hippocampus.pages.dev/*",
     "https://hippocampus-cyfo.onrender.com/*",
     "<all_urls>"
   ],
@@ -30,6 +30,13 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://e399c7e9.hippocampus.pages.dev/*"],
+      "js": ["auth-content-script.js"],
+      "run_at": "document_end"
+    }
+  ],
   "action": {
     "default_title": "Toggle Sidebar"
   }

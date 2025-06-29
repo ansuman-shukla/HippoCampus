@@ -20,7 +20,6 @@ interface Props {
   setExtraNote: (note: string) => void;
   NotesTitle: string;
   setNotesTitle: (title: string) => void;
-  bgClr?: string; // Add background color prop to detect error state
 }
 interface FormData {
   link: string;
@@ -43,20 +42,11 @@ export default function InputForm({
   setExtraNote,
   NotesTitle,
   setNotesTitle,
-  currentTab,
-  setCurrentTab,
-  bgClr
+  setCurrentTab
 }: Props) {
   const [showNotes, setShowNotes] = useState(false);
   
-  // Reset showNotes when currentTab changes externally (e.g., from back button)
-  useEffect(() => {
-    if (currentTab === "submit") {
-      setShowNotes(false);
-    } else if (currentTab === "notes") {
-      setShowNotes(true);
-    }
-  }, [currentTab]);
+  
 
   useEffect(()=>{
     if(showNotes){
@@ -84,7 +74,7 @@ export default function InputForm({
             onChange={handleChange}
             className="w-full border-b border-black bg-transparent focus:outline-none  pb-1 placeholder-[#151515] placeholder-opacity-25"
             placeholder="Your link here"
-            disabled={isLoading}
+            disabled={isLoading || showOnlyOne}
           />
         </div>
 
@@ -97,7 +87,7 @@ export default function InputForm({
             onChange={handleChange}
             className="w-full border-b border-black bg-transparent focus:outline-none pb-1 placeholder-[#151515] placeholder-opacity-25"
             placeholder="Your title here"
-            disabled={isLoading}
+            disabled={isLoading || showOnlyOne}
           />
         </div>
 
@@ -110,7 +100,7 @@ export default function InputForm({
             onChange={handleChange}
             className="w-full border-b border-black bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-1 scrollbar-hide"
             placeholder="Enter a descriptive note for better search results"
-            disabled={isLoading}
+            disabled={isLoading || showOnlyOne}
           />
         </div>
 
@@ -128,6 +118,7 @@ export default function InputForm({
           onChange={e => setNotesTitle(e.target.value)}
           className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black scrollbar-hide"
           placeholder="Write your note here..."
+          disabled={isLoading || showOnlyOne}
         />
         <label className="block text-md font-SansMono400 text-[15px] ">Note:</label>
         <textarea
@@ -136,16 +127,17 @@ export default function InputForm({
           onChange={e => setExtraNote(e.target.value)}
           className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black scrollbar-hide"
           placeholder="Write your extra note here..."
+          disabled={isLoading || showOnlyOne}
         />
       </div>)}
 
         <div className="flex justify-center mt-0">
-          {!showOnlyOne && !Error && bgClr !== "--primary-orange" && (
+          {!showOnlyOne && !Error && (
             <button
               type="button"
               className="text-neutral-700 bg-white/20 rounded-full px-4 py-2 flex justify-center items-center gap-1 mt-2  text-sm transition hover:text-black"
               onClick={() => setShowNotes(!showNotes)}
-              disabled={isLoading}
+              disabled={isLoading || showOnlyOne}
             >
               <BsChevronDoubleDown size={12} /> { showNotes ? "Add Bookmarks" : "Add Notes"}
             </button>
