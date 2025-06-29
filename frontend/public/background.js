@@ -156,8 +156,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  else if (message.action === "authCompleted") {
+    // Notify all extension windows that auth has completed
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        if (tab.url && tab.url.includes('chrome-extension://')) {
+          chrome.tabs.sendMessage(tab.id, { action: "authStateChanged" }).catch(() => {
+            // Ignore errors if extension popup is not active
+          });
+        }
+      });
+    });
+    sendResponse({ success: true });
+    return true;
+  }
+
   else {
     null
   }
 
+});
+
+// Monitor cookie changes for authentication
+chrome.cookies.onChanged.addListener((changeInfo) => {
+  if (changeInfo.cookie.domain === 'e399c7e9.hippocampus.pages.dev' && 
+      (changeInfo.cookie.name === 'access_token' || changeInfo.cookie.name === 'refresh_token') &&
+      !changeInfo.removed) {
+    console.log('Auth cookie detected, triggering auth check');
+    
+    // Notify extension about potential auth completion
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        if (tab.url && tab.url.includes('chrome-extension://')) {
+          chrome.tabs.sendMessage(tab.id, { action: "checkAuthStatus" }).catch(() => {
+            // Ignore errors if extension popup is not active
+          });
+        }
+      });
+    });
+  }
 });

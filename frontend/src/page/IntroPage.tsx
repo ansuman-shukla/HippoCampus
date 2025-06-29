@@ -8,13 +8,13 @@ const Intro = () => {
     const Navigate = useNavigate();
     const handleAuth = async () => {
       chrome.cookies.get({
-          url: 'https://3904b6d1.hippocampus.pages.dev',
+          url: 'https://e399c7e9.hippocampus.pages.dev',
           name: 'access_token',
       }, function(cookie) {
           if (cookie) {
               Navigate("/submit");
           } else {
-              window.open("https://3904b6d1.hippocampus.pages.dev");
+              window.open("https://e399c7e9.hippocampus.pages.dev");
           }
       });
   }

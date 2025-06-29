@@ -20,9 +20,13 @@ function App() {
             localStorage.setItem('access_token', session.access_token)
             localStorage.setItem('refresh_token', session.refresh_token)
             
-            // Set cookies for the current domain (3904b6d1.hippocampus.pages.dev)
-            document.cookie = `access_token=${session.access_token}; path=/; SameSite=Lax; Secure`
-            document.cookie = `refresh_token=${session.refresh_token}; path=/; SameSite=Lax; Secure`
+            // Set cookies for the current domain that can be accessed by the extension
+            // Use SameSite=None for cross-domain access and add expiration
+            const expirationDate = new Date();
+            expirationDate.setTime(expirationDate.getTime() + (session.expires_in * 1000)); // Use session expiration
+            
+            document.cookie = `access_token=${session.access_token}; path=/; SameSite=None; Secure; expires=${expirationDate.toUTCString()}`
+            document.cookie = `refresh_token=${session.refresh_token}; path=/; SameSite=None; Secure; expires=${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString()}`
             
             // Close the tab after successful authentication
             setTimeout(() => {
@@ -41,9 +45,13 @@ function App() {
             localStorage.setItem('access_token', session.access_token)
             localStorage.setItem('refresh_token', session.refresh_token)
             
-            // Set cookies for the current domain
-            document.cookie = `access_token=${session.access_token}; path=/; SameSite=Lax; Secure`
-            document.cookie = `refresh_token=${session.refresh_token}; path=/; SameSite=Lax; Secure`
+            // Set cookies for the current domain that can be accessed by the extension
+            // Use SameSite=None for cross-domain access and add expiration
+            const expirationDate = new Date();
+            expirationDate.setTime(expirationDate.getTime() + (session.expires_in * 1000)); // Use session expiration
+            
+            document.cookie = `access_token=${session.access_token}; path=/; SameSite=None; Secure; expires=${expirationDate.toUTCString()}`
+            document.cookie = `refresh_token=${session.refresh_token}; path=/; SameSite=None; Secure; expires=${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString()}`
             
             // Close the tab after successful authentication
             setTimeout(() => {

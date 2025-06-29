@@ -38,10 +38,65 @@ const AnimatedRoutes = () => {
 
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
-    chrome.cookies.getAll({ url: "https://3904b6d1.hippocampus.pages.dev" }, async (cookies) => {
+    chrome.cookies.getAll({ url: "https://e399c7e9.hippocampus.pages.dev" }, async (cookies) => {
       console.log('Checking for external auth cookies:', cookies);
       const accessToken = cookies.find((cookie) => cookie.name === "access_token")?.value;
       const refreshToken = cookies.find((cookie) => cookie.name === "refresh_token")?.value;
+
+      // If cookies are not found, try to get tokens from localStorage via content script or direct injection
+      if (!accessToken) {
+        try {
+          // First try to find an existing tab with the auth site
+          const tabs = await chrome.tabs.query({ url: "https://e399c7e9.hippocampus.pages.dev/*" });
+          let result = null;
+          
+          if (tabs.length > 0 && tabs[0].id) {
+            try {
+              // Try content script first
+              result = await chrome.tabs.sendMessage(tabs[0].id, { action: "getTokensFromLocalStorage" });
+            } catch (error) {
+              console.log('Content script not available, trying direct injection:', error);
+              
+              // Fallback: inject script directly
+              const [injectionResult] = await chrome.scripting.executeScript({
+                target: { tabId: tabs[0].id },
+                func: () => {
+                  return {
+                    accessToken: localStorage.getItem('access_token'),
+                    refreshToken: localStorage.getItem('refresh_token'),
+                    session: localStorage.getItem('session')
+                  };
+                }
+              });
+              
+              result = injectionResult.result;
+            }
+          }
+          
+          if (result?.accessToken) {
+            console.log('Found tokens in localStorage, transferring to backend...');
+            await setBackendCookies(result.accessToken, result.refreshToken);
+            
+            // Verify and navigate
+            const verificationCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
+              chrome.cookies.get({
+                url: 'https://hippocampus-cyfo.onrender.com',
+                name: 'access_token'
+              }, (cookie) => {
+                resolve(cookie);
+              });
+            });
+            
+            if (verificationCookie && location.pathname === "/") {
+              console.log('Backend cookies set successfully from localStorage, navigating to submit');
+              Navigate("/submit");
+            }
+            return;
+          }
+        } catch (error) {
+          console.log('Could not get tokens from localStorage:', error);
+        }
+      }
 
       if (accessToken && location.pathname === "/") {
         try {
@@ -63,8 +118,8 @@ const AnimatedRoutes = () => {
             console.log('Backend cookies set successfully, navigating to submit');
             
             // Clean up external auth cookies after successful transfer
-            chrome.cookies.remove({ url: "https://3904b6d1.hippocampus.pages.dev", name: "access_token" });
-            chrome.cookies.remove({ url: "https://3904b6d1.hippocampus.pages.dev", name: "refresh_token" });
+            chrome.cookies.remove({ url: "https://e399c7e9.hippocampus.pages.dev", name: "access_token" });
+            chrome.cookies.remove({ url: "https://e399c7e9.hippocampus.pages.dev", name: "refresh_token" });
             
             Navigate("/submit");
           } else {
@@ -72,8 +127,8 @@ const AnimatedRoutes = () => {
           }
         } catch (error) {
           console.error('Failed to set backend cookies:', error);
-          // Retry after a short delay
-          setTimeout(() => checkForExternalAuth(), 2000);
+          // Retry after a shorter delay for better responsiveness
+          setTimeout(() => checkForExternalAuth(), 1000);
         }
       } else {
         // Check if already authenticated with backend
@@ -84,8 +139,8 @@ const AnimatedRoutes = () => {
           if (cookie && location.pathname === "/") {
             Navigate("/submit");
           } else if (!cookie && !accessToken) {
-            // No authentication found, continue checking
-            setTimeout(() => checkForExternalAuth(), 1000);
+            // No authentication found, continue checking with shorter interval
+            setTimeout(() => checkForExternalAuth(), 500);
           }
         });
       }
@@ -160,6 +215,20 @@ const AnimatedRoutes = () => {
   
   useEffect(() => {
     checkForExternalAuth();
+    
+    // Listen for auth state changes from background script
+    const messageListener = (message: any) => {
+      if (message.action === "checkAuthStatus" || message.action === "authStateChanged") {
+        console.log('Received auth state change notification');
+        checkForExternalAuth();
+      }
+    };
+    
+    chrome.runtime.onMessage.addListener(messageListener);
+    
+    return () => {
+      chrome.runtime.onMessage.removeListener(messageListener);
+    };
   }, []);
 
   
