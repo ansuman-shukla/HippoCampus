@@ -17,7 +17,7 @@
   "host_permissions": [
     "http://localhost:5173/*",
     "https://magical-famous-emu.ngrok-free.app/*",
-    "https://extension-auth.vercel.app/*",
+    "https://3904b6d1.hippocampus.pages.dev/*",
     "https://hippocampus-cyfo.onrender.com/*",
     "<all_urls>"
   ],

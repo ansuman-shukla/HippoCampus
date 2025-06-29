@@ -38,7 +38,8 @@ const AnimatedRoutes = () => {
 
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
-    chrome.cookies.getAll({ url: "https://extension-auth.vercel.app" }, async (cookies) => {
+    chrome.cookies.getAll({ url: "https://3904b6d1.hippocampus.pages.dev" }, async (cookies) => {
+      console.log('Checking for external auth cookies:', cookies);
       const accessToken = cookies.find((cookie) => cookie.name === "access_token")?.value;
       const refreshToken = cookies.find((cookie) => cookie.name === "refresh_token")?.value;
 
@@ -60,6 +61,11 @@ const AnimatedRoutes = () => {
           
           if (verificationCookie) {
             console.log('Backend cookies set successfully, navigating to submit');
+            
+            // Clean up external auth cookies after successful transfer
+            chrome.cookies.remove({ url: "https://3904b6d1.hippocampus.pages.dev", name: "access_token" });
+            chrome.cookies.remove({ url: "https://3904b6d1.hippocampus.pages.dev", name: "refresh_token" });
+            
             Navigate("/submit");
           } else {
             throw new Error('Cookie verification failed');
@@ -70,7 +76,18 @@ const AnimatedRoutes = () => {
           setTimeout(() => checkForExternalAuth(), 2000);
         }
       } else {
-        setTimeout(checkForExternalAuth, 1000);
+        // Check if already authenticated with backend
+        chrome.cookies.get({
+          url: 'https://hippocampus-cyfo.onrender.com',
+          name: 'access_token',
+        }, (cookie) => {
+          if (cookie && location.pathname === "/") {
+            Navigate("/submit");
+          } else if (!cookie && !accessToken) {
+            // No authentication found, continue checking
+            setTimeout(() => checkForExternalAuth(), 1000);
+          }
+        });
       }
     });
   }
@@ -179,7 +196,7 @@ const AnimatedRoutes = () => {
             },
             (response) => {
               if (response.success) {
-                if (response.data) {
+                if (response.data && Array.isArray(response.data)) {
                   const filteredQuotes = response.data.filter((quote: string) => quote.length > 0);
                   setQuotes(prev => [
                     ...new Set([...prev, ...filteredQuotes])
@@ -187,8 +204,11 @@ const AnimatedRoutes = () => {
                   console.log("GOT QUOTES FROM BACKEND")
                   localStorage.setItem("quotes", JSON.stringify(filteredQuotes));
                   console.log("Quotes are set")
+                } else {
+                  console.error("Response data is not an array:", response.data);
                 }
               } else {
+                console.error("Failed to get quotes:", response.error);
               }
             }
           );

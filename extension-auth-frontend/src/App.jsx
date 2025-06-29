@@ -19,24 +19,36 @@ function App() {
             localStorage.setItem('session', JSON.stringify(session))
             localStorage.setItem('access_token', session.access_token)
             localStorage.setItem('refresh_token', session.refresh_token)
-            document.cookie = `access_token=${session.access_token}; path=/; domain=extension-auth.vercel.app; SameSite=Lax`
-            document.cookie = `refresh_token=${session.refresh_token}; path=/; domain=extension-auth.vercel.app; SameSite=Lax`
-            chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-            chrome.tabs.remove(tabs[0].id);
-            window.close();
-            });
+            
+            // Set cookies for the current domain (3904b6d1.hippocampus.pages.dev)
+            document.cookie = `access_token=${session.access_token}; path=/; SameSite=Lax; Secure`
+            document.cookie = `refresh_token=${session.refresh_token}; path=/; SameSite=Lax; Secure`
+            
+            // Close the tab after successful authentication
+            setTimeout(() => {
+              window.close();
+            }, 1000);
           }
         })
       
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
+          console.log('Supabase auth event:', _event);
           setSession(session)
           if (session) {
             localStorage.setItem('session', JSON.stringify(session))
             localStorage.setItem('access_token', session.access_token)
-            document.cookie = `access_token=${session.access_token}; path=/; domain=extension-auth.vercel.app; SameSite=Lax`
-            document.cookie = `refresh_token=${session.refresh_token}; path=/; domain=extension-auth.vercel.app; SameSite=Lax`
+            localStorage.setItem('refresh_token', session.refresh_token)
+            
+            // Set cookies for the current domain
+            document.cookie = `access_token=${session.access_token}; path=/; SameSite=Lax; Secure`
+            document.cookie = `refresh_token=${session.refresh_token}; path=/; SameSite=Lax; Secure`
+            
+            // Close the tab after successful authentication
+            setTimeout(() => {
+              window.close();
+            }, 1000);
           }
         })
       
