@@ -179,7 +179,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Monitor cookie changes for authentication
 chrome.cookies.onChanged.addListener((changeInfo) => {
-  if (changeInfo.cookie.domain === 'e399c7e9.hippocampus.pages.dev' && 
+  if (changeInfo.cookie.domain === 'extension-auth.vercel.app/' && 
       (changeInfo.cookie.name === 'access_token' || changeInfo.cookie.name === 'refresh_token') &&
       !changeInfo.removed) {
     console.log('Auth cookie detected, triggering auth check');

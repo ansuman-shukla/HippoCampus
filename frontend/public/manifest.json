@@ -17,7 +17,7 @@
   "host_permissions": [
     "http://localhost:5173/*",
     "https://magical-famous-emu.ngrok-free.app/*",
-    "https://e399c7e9.hippocampus.pages.dev/*",
+    "https://extension-auth.vercel.app/*",
     "https://hippocampus-cyfo.onrender.com/*",
     "<all_urls>"
   ],
@@ -32,7 +32,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://e399c7e9.hippocampus.pages.dev/*"],
+      "matches": ["https://extension-auth.vercel.app/*"],
       "js": ["auth-content-script.js"],
       "run_at": "document_end"
     }

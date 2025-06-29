@@ -38,7 +38,7 @@ const AnimatedRoutes = () => {
 
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
-    chrome.cookies.getAll({ url: "https://e399c7e9.hippocampus.pages.dev" }, async (cookies) => {
+    chrome.cookies.getAll({ url: "https://extension-auth.vercel.app/" }, async (cookies) => {
       console.log('Checking for external auth cookies:', cookies);
       const accessToken = cookies.find((cookie) => cookie.name === "access_token")?.value;
       const refreshToken = cookies.find((cookie) => cookie.name === "refresh_token")?.value;
@@ -47,7 +47,7 @@ const AnimatedRoutes = () => {
       if (!accessToken) {
         try {
           // First try to find an existing tab with the auth site
-          const tabs = await chrome.tabs.query({ url: "https://e399c7e9.hippocampus.pages.dev/*" });
+          const tabs = await chrome.tabs.query({ url: "*" });
           let result = null;
           
           if (tabs.length > 0 && tabs[0].id) {
@@ -118,8 +118,8 @@ const AnimatedRoutes = () => {
             console.log('Backend cookies set successfully, navigating to submit');
             
             // Clean up external auth cookies after successful transfer
-            chrome.cookies.remove({ url: "https://e399c7e9.hippocampus.pages.dev", name: "access_token" });
-            chrome.cookies.remove({ url: "https://e399c7e9.hippocampus.pages.dev", name: "refresh_token" });
+            chrome.cookies.remove({ url: "https://extension-auth.vercel.app/", name: "access_token" });
+            chrome.cookies.remove({ url: "https://extension-auth.vercel.app/", name: "refresh_token" });
             
             Navigate("/submit");
           } else {
