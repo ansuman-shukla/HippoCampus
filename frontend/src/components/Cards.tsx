@@ -33,7 +33,7 @@ isSearchAll
             className={`${bgColor} rounded-lg p-4 mb-4 relative cursor-pointer flex-col justify-between
             ${
               isSelected
-                ? `scale-100 h-[415px] w-[100%]`
+                ? `scale-100 min-h-[415px] w-[100%]`
                 : 'scale-100 h-[130px] hover:scale-[1.02] overflow-hidden'
             } transition-all duration-500 ease-in-out will-change-transform
             

@@ -114,6 +114,22 @@ export const login = async (email: string, password: string): Promise<AuthRespon
 
     const result = await response.json();
     
+    // Store user info in localStorage as backup for extensions
+    if (result.user) {
+      try {
+        localStorage.setItem('user_id', result.user.id || '');
+        localStorage.setItem('user_email', result.user.email || '');
+        if (result.user.full_name) {
+          localStorage.setItem('user_name', result.user.full_name);
+        }
+        if (result.user.picture) {
+          localStorage.setItem('user_picture', result.user.picture);
+        }
+      } catch (error) {
+        console.warn('Failed to store user info in localStorage:', error);
+      }
+    }
+    
     return {
       success: true,
       user: result.user,
@@ -171,7 +187,7 @@ export const signup = async (
 };
 
 /**
- * Logout - Clear cookies via backend
+ * Logout - Clear cookies via backend and localStorage
  */
 export const logout = async (): Promise<AuthResponse> => {
   try {
@@ -184,6 +200,16 @@ export const logout = async (): Promise<AuthResponse> => {
     // Also sign out from Supabase
     await supabase.auth.signOut();
 
+    // Clear localStorage
+    try {
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('user_name');
+      localStorage.removeItem('user_picture');
+    } catch (error) {
+      console.warn('Failed to clear localStorage:', error);
+    }
+
     if (!response.ok) {
       console.warn('Backend logout failed, but Supabase logout succeeded');
     }
@@ -194,8 +220,14 @@ export const logout = async (): Promise<AuthResponse> => {
     };
   } catch (error) {
     console.error('Logout error:', error);
-    // Even if backend fails, ensure Supabase logout
+    // Even if backend fails, ensure Supabase logout and clear localStorage
     await supabase.auth.signOut();
+    try {
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('user_name');
+      localStorage.removeItem('user_picture');
+    } catch {}
     return {
       success: true,
       message: 'Logged out (with some issues)',
@@ -235,13 +267,26 @@ export const getAuthStatus = async (): Promise<AuthResponse> => {
     
     // Check if user is authenticated based on backend response
     if (data.is_authenticated && data.user_id) {
+      const user = {
+        id: data.user_id,
+        email: data.user_email || '',
+        full_name: data.user_name || data.full_name,
+        picture: data.user_picture || data.picture,
+      };
+
+      // Store user info in localStorage for quick access
+      try {
+        localStorage.setItem('user_id', user.id);
+        if (user.email) localStorage.setItem('user_email', user.email);
+        if (user.full_name) localStorage.setItem('user_name', user.full_name);
+        if (user.picture) localStorage.setItem('user_picture', user.picture);
+      } catch (error) {
+        console.warn('Failed to store user info in localStorage:', error);
+      }
+
       return {
         success: true,
-        user: {
-          id: data.user_id,
-          email: data.user_email || '',
-          // Add other user fields as needed
-        },
+        user,
       };
     }
     
@@ -346,15 +391,11 @@ export const isAuthenticated = (): boolean => {
 };
 
 /**
- * Get user info from cookies (for display purposes)
- * Backend sets these as regular cookies for frontend access
+ * Get user info from cookies and localStorage (for display purposes)
+ * Backend sets these as regular cookies for frontend access, localStorage as fallback
  */
 export const getUserFromCookies = (): Partial<AuthUser> | null => {
   try {
-    if (isExtension()) {
-      return null; // Extensions can't easily access cookies
-    }
-
     const getCookie = (name: string): string | null => {
       const value = `; ${document.cookie}`;
       const parts = value.split(`; ${name}=`);
@@ -365,17 +406,58 @@ export const getUserFromCookies = (): Partial<AuthUser> | null => {
       return null;
     };
 
-    const userId = getCookie('user_id');
-    const userName = getCookie('user_name');
-    const userPicture = getCookie('user_picture');
+    const getFromStorage = (key: string): string | null => {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    };
+
+    // Try cookies first, then localStorage as fallback
+    const userId = getCookie('user_id') || getFromStorage('user_id');
+    const userEmail = getCookie('user_email') || getFromStorage('user_email');
+    const userName = getCookie('user_name') || getCookie('username') || getCookie('full_name') || getFromStorage('user_name');
+    const userPicture = getCookie('user_picture') || getCookie('picture') || getFromStorage('user_picture');
 
     if (!userId) return null;
 
     return {
       id: userId,
+      email: userEmail || undefined,
       full_name: userName || undefined,
       picture: userPicture || undefined,
     };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Get username specifically (helper function for quick access)
+ */
+export const getUsername = (): string | null => {
+  try {
+    // Check localStorage first (works in all environments)
+    const fromStorage = localStorage.getItem('user_name');
+    if (fromStorage) return fromStorage;
+
+    // Check cookies as fallback (doesn't work in extensions)
+    if (!isExtension()) {
+      const getCookie = (name: string): string | null => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) {
+          const cookieValue = parts.pop()?.split(';').shift();
+          return cookieValue ? decodeURIComponent(cookieValue) : null;
+        }
+        return null;
+      };
+
+      return getCookie('user_name') || getCookie('username') || getCookie('full_name');
+    }
+
+    return null;
   } catch {
     return null;
   }
