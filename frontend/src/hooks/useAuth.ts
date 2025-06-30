@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { getAuthStatus } from '../utils/authUtils';
 
+// Helper function to get clean backend URL
+const getBackendUrl = (): string => {
+  const baseUrl = import.meta.env.VITE_BACKEND_URL;
+  return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+};
+
 export interface User {
   id: string;
   email: string;
@@ -172,7 +178,7 @@ export const useAuth = () => {
       
       // Call backend logout endpoint (clears all server-side cookies)
       // Backend clears: access_token, refresh_token, user_id, user_name, user_picture
-      await fetch(`https://hippocampus-cyfo.onrender.com/auth/logout`, {
+      await fetch(`${getBackendUrl()}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -216,7 +222,7 @@ export const useAuth = () => {
   // Manually refresh token (backend auto-refreshes via middleware)
   const refreshToken = useCallback(async () => {
     try {
-      const response = await fetch(`https://hippocampus-cyfo.onrender.com/auth/refresh`, {
+      const response = await fetch(`${getBackendUrl()}/auth/refresh`, {
         method: 'POST',
         credentials: 'include', // Backend reads refresh_token from cookies
         headers: {
@@ -252,8 +258,8 @@ export const useAuth = () => {
     if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
       try {
         // Set cookies for backend API domain with exact settings backend expects
-        const apiUrl = 'https://hippocampus-cyfo.onrender.com';
-        const apiDomain = 'hippocampus-cyfo.onrender.com';
+        const apiUrl = import.meta.env.VITE_BACKEND_URL;
+        const apiDomain = new URL(import.meta.env.VITE_BACKEND_URL).hostname;
 
         // Access token cookie (expires in 1 hour, matching backend)
         await window.chrome.cookies.set({
@@ -295,7 +301,7 @@ export const useAuth = () => {
   const clearAuthCookies = async () => {
     if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
       try {
-        const apiUrl = 'https://hippocampus-cyfo.onrender.com';
+        const apiUrl = import.meta.env.VITE_BACKEND_URL;
         
         // Clear all cookies that backend authentication middleware sets
         const authCookieNames = [

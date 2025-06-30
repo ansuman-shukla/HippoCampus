@@ -31,7 +31,8 @@ const isExtension = (): boolean => {
 
 // Get the appropriate API base URL (always the backend)
 const getApiBaseUrl = (): string => {
-  return 'https://hippocampus-cyfo.onrender.com';
+  const baseUrl = import.meta.env.VITE_BACKEND_URL;
+  return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 };
 
 /**

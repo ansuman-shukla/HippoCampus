@@ -71,7 +71,7 @@ export default function ResponsePage() {
     } else {
       // If not in localStorage, fetch from cookies (existing logic)
       console.log('Username not found in localStorage, fetching from cookies...');
-      chrome.cookies.get({url:'https://hippocampus-cyfo.onrender.com/',name:'user_name'},(cookie)=>{
+      chrome.cookies.get({url: import.meta.env.VITE_BACKEND_URL, name:'user_name'},(cookie)=>{
         if(cookie){
           // Extract first name and truncate to 8 characters if needed
           const fullName = cookie.value.replace(/"/g, "");

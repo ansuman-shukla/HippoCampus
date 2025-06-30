@@ -1,3 +1,7 @@
+// Configuration - will be replaced during build
+const BACKEND_URL = '__VITE_BACKEND_URL__';
+const API_URL = '__VITE_API_URL__';
+
 chrome.action.onClicked.addListener((tab) => {
   chrome.scripting.insertCSS({
     target: { tabId: tab.id },
@@ -18,14 +22,14 @@ chrome.action.onClicked.addListener((tab) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "searchAll") {
     Promise.all([
-      fetch(`https://hippocampus-cyfo.onrender.com/links/get`, {
+      fetch(`${BACKEND_URL}/links/get`, {
       method: 'GET',
       credentials: 'include',
       headers: { 
         'Content-Type': 'application/json'
       }
       }).then(response => response.json()),
-      fetch(`https://hippocampus-cyfo.onrender.com/notes/`, {
+      fetch(`${BACKEND_URL}/notes/`, {
       method: 'GET',
       credentials: 'include',
       headers: { 
@@ -59,7 +63,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       fetchOptions.body = JSON.stringify({ type: { $eq: message.type } });
     }
 
-    fetch(`https://hippocampus-cyfo.onrender.com/links/search?query=${message.query}`, fetchOptions)
+    fetch(`${BACKEND_URL}/links/search?query=${message.query}`, fetchOptions)
       .then(response => response.json())
       .then(data => {
         console.log("The response is:", data);
@@ -71,7 +75,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   else if (message.action === "submit") {
-    fetch('https://hippocampus-cyfo.onrender.com/links/save', {
+    fetch(`${BACKEND_URL}/links/save`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -97,7 +101,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   else if (message.action === "saveNotes") {
-    fetch('https://hippocampus-cyfo.onrender.com/notes/', {
+    fetch(`${BACKEND_URL}/notes/`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -124,7 +128,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   else if (message.action === "getQuotes") {
-    fetch('https://hippocampus-cyfo.onrender.com/quotes/', {
+    fetch(`${BACKEND_URL}/quotes/`, {
       method: 'GET',
       credentials: 'include'
     })
@@ -134,7 +138,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   else if (message.action === "delete") {
-    fetch(`https://hippocampus-cyfo.onrender.com/links/delete?doc_id_pincone=${message.query}`, {
+    fetch(`${BACKEND_URL}/links/delete?doc_id_pincone=${message.query}`, {
       method: 'DELETE',
       credentials: 'include'
     })
@@ -144,7 +148,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   else if (message.action === "generateSummaryforContent") {
-    fetch(`https://hippocampus-cyfo.onrender.com/summary/generate`, {
+    fetch(`${BACKEND_URL}/summary/generate`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -179,7 +183,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Monitor cookie changes for authentication
 chrome.cookies.onChanged.addListener((changeInfo) => {
-  if (changeInfo.cookie.domain === 'extension-auth.vercel.app/' && 
+  if (changeInfo.cookie.domain === new URL(API_URL).hostname + '/' && 
       (changeInfo.cookie.name === 'access_token' || changeInfo.cookie.name === 'refresh_token') &&
       !changeInfo.removed) {
     console.log('Auth cookie detected, triggering auth check');

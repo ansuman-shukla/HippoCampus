@@ -3,7 +3,8 @@
 
 const getApiBaseUrl = (): string => {
   // Always use the backend API URL for API calls
-  return 'https://hippocampus-cyfo.onrender.com';
+  const baseUrl = import.meta.env.VITE_BACKEND_URL;
+  return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 };
 
 // Enhanced error response interface matching backend error format

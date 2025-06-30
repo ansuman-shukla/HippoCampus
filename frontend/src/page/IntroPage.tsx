@@ -8,13 +8,13 @@ const Intro = () => {
     const Navigate = useNavigate();
     const handleAuth = async () => {
       chrome.cookies.get({
-          url: 'https://extension-auth.vercel.app/',
+          url: import.meta.env.VITE_API_URL,
           name: 'access_token',
       }, function(cookie) {
           if (cookie) {
               Navigate("/submit");
           } else {
-              window.open("https://extension-auth.vercel.app/");
+              window.open(import.meta.env.VITE_API_URL);
           }
       });
   }

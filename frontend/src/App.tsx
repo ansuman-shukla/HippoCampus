@@ -38,7 +38,7 @@ const AnimatedRoutes = () => {
 
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
-    chrome.cookies.getAll({ url: "https://extension-auth.vercel.app/" }, async (cookies) => {
+    chrome.cookies.getAll({ url: import.meta.env.VITE_API_URL }, async (cookies) => {
       console.log('Checking for external auth cookies:', cookies);
       const accessToken = cookies.find((cookie) => cookie.name === "access_token")?.value;
       const refreshToken = cookies.find((cookie) => cookie.name === "refresh_token")?.value;
@@ -80,7 +80,7 @@ const AnimatedRoutes = () => {
             // Verify and navigate
             const verificationCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
               chrome.cookies.get({
-                url: 'https://hippocampus-cyfo.onrender.com',
+                url: import.meta.env.VITE_BACKEND_URL,
                 name: 'access_token'
               }, (cookie) => {
                 resolve(cookie);
@@ -107,7 +107,7 @@ const AnimatedRoutes = () => {
           // Double-check that cookies were properly set
           const verificationCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
             chrome.cookies.get({
-              url: 'https://hippocampus-cyfo.onrender.com',
+              url: import.meta.env.VITE_BACKEND_URL,
               name: 'access_token'
             }, (cookie) => {
               resolve(cookie);
@@ -118,8 +118,8 @@ const AnimatedRoutes = () => {
             console.log('Backend cookies set successfully, navigating to submit');
             
             // Clean up external auth cookies after successful transfer
-            chrome.cookies.remove({ url: "https://extension-auth.vercel.app/", name: "access_token" });
-            chrome.cookies.remove({ url: "https://extension-auth.vercel.app/", name: "refresh_token" });
+            chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
+            chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
             
             Navigate("/submit");
           } else {
@@ -133,7 +133,7 @@ const AnimatedRoutes = () => {
       } else {
         // Check if already authenticated with backend
         chrome.cookies.get({
-          url: 'https://hippocampus-cyfo.onrender.com',
+          url: import.meta.env.VITE_BACKEND_URL,
           name: 'access_token',
         }, (cookie) => {
           if (cookie && location.pathname === "/") {
@@ -150,7 +150,7 @@ const AnimatedRoutes = () => {
   // Helper function to set backend cookies directly from external auth
   const setBackendCookies = async (accessToken: string, refreshToken?: string) => {
     try {
-      const apiUrl = 'https://hippocampus-cyfo.onrender.com';
+      const apiUrl = import.meta.env.VITE_BACKEND_URL;
       
       // Set access token cookie and wait for completion
       await new Promise<void>((resolve, reject) => {
@@ -159,7 +159,7 @@ const AnimatedRoutes = () => {
           name: 'access_token',
           value: accessToken,
           path: '/',
-          domain: 'hippocampus-cyfo.onrender.com',
+          domain: new URL(import.meta.env.VITE_BACKEND_URL).hostname,
           secure: true,
           sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
           expirationDate: Math.floor(Date.now() / 1000) + 3600 // 1 hour
@@ -183,7 +183,7 @@ const AnimatedRoutes = () => {
             name: 'refresh_token',
             value: refreshToken,
             path: '/',
-            domain: 'hippocampus-cyfo.onrender.com',
+            domain: new URL(import.meta.env.VITE_BACKEND_URL).hostname,
             secure: true,
             sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
             expirationDate: Math.floor(Date.now() / 1000) + 604800 // 7 days
@@ -245,7 +245,7 @@ const AnimatedRoutes = () => {
       try {
         // Check if user is authenticated via backend cookies
         const cookie = await chrome.cookies.get({
-          url: 'https://hippocampus-cyfo.onrender.com',
+          url: import.meta.env.VITE_BACKEND_URL,
           name: 'access_token',
         });
 

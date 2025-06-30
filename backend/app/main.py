@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # Create FastAPI app with enhanced error handling
 app = FastAPI(
     title="HippoCampus API",
-    description="Personal knowledge management system with graceful error handling",
+    description="I help you remember everything",
     version="1.0.0"
 )
 
