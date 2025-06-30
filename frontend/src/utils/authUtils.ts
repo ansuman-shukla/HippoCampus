@@ -119,7 +119,6 @@ export const login = async (email: string, password: string): Promise<AuthRespon
     if (result.user) {
       try {
         localStorage.setItem('user_id', result.user.id || '');
-        localStorage.setItem('user_email', result.user.email || '');
         if (result.user.full_name) {
           localStorage.setItem('user_name', result.user.full_name);
         }
@@ -204,7 +203,6 @@ export const logout = async (): Promise<AuthResponse> => {
     // Clear localStorage
     try {
       localStorage.removeItem('user_id');
-      localStorage.removeItem('user_email');
       localStorage.removeItem('user_name');
       localStorage.removeItem('user_picture');
     } catch (error) {
@@ -225,7 +223,6 @@ export const logout = async (): Promise<AuthResponse> => {
     await supabase.auth.signOut();
     try {
       localStorage.removeItem('user_id');
-      localStorage.removeItem('user_email');
       localStorage.removeItem('user_name');
       localStorage.removeItem('user_picture');
     } catch {}
@@ -278,7 +275,6 @@ export const getAuthStatus = async (): Promise<AuthResponse> => {
       // Store user info in localStorage for quick access
       try {
         localStorage.setItem('user_id', user.id);
-        if (user.email) localStorage.setItem('user_email', user.email);
         if (user.full_name) localStorage.setItem('user_name', user.full_name);
         if (user.picture) localStorage.setItem('user_picture', user.picture);
       } catch (error) {
@@ -417,7 +413,7 @@ export const getUserFromCookies = (): Partial<AuthUser> | null => {
 
     // Try cookies first, then localStorage as fallback
     const userId = getCookie('user_id') || getFromStorage('user_id');
-    const userEmail = getCookie('user_email') || getFromStorage('user_email');
+    const userEmail = getCookie('user_email');
     const userName = getCookie('user_name') || getCookie('username') || getCookie('full_name') || getFromStorage('user_name');
     const userPicture = getCookie('user_picture') || getCookie('picture') || getFromStorage('user_picture');
 
