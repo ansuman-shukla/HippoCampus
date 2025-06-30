@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "HippoCampus",
   "version": "1.0",
-  "description": "A brief description of my app",
+  "description": "I can remember anything for you",
   "icons": {
     "256": "HippoCampusLogo.png"
   },
