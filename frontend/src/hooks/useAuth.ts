@@ -170,52 +170,92 @@ export const useAuth = () => {
 
   // Sign out
   const signOut = useCallback(async () => {
+    setAuthState((prev: AuthState) => ({ ...prev, isLoading: true }));
+    
+    let backendLogoutSuccess = false;
+    let supabaseLogoutSuccess = false;
+    let errors: string[] = [];
+
     try {
-      setAuthState((prev: AuthState) => ({ ...prev, isLoading: true }));
-      
-      // Sign out from Supabase first
-      await supabase.auth.signOut();
-      
-      // Call backend logout endpoint (clears all server-side cookies)
-      // Backend clears: access_token, refresh_token, user_id, user_name, user_picture
-      await fetch(`${getBackendUrl()}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
+      // Priority 1: Clear backend session cookies (most critical)
+      try {
+        const response = await fetch(`${getBackendUrl()}/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (response.ok) {
+          backendLogoutSuccess = true;
+          console.log('Backend logout successful');
+        } else {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          errors.push(`Backend logout failed: ${errorText}`);
         }
-      });
+      } catch (error: any) {
+        errors.push(`Backend logout network error: ${error.message}`);
+        console.error('Backend logout failed:', error);
+      }
 
-      // Clear localStorage backup
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('quotes');
+      // Priority 2: Sign out from Supabase (independent of backend result)
+      try {
+        await supabase.auth.signOut();
+        supabaseLogoutSuccess = true;
+        console.log('Supabase logout successful');
+      } catch (error: any) {
+        errors.push(`Supabase logout failed: ${error.message}`);
+        console.error('Supabase logout failed:', error);
+      }
 
-      // Clear extension cookies (if running in extension context)
-      await clearAuthCookies();
+    } finally {
+      // ALWAYS clear local state and cookies regardless of network failures
+      // This ensures user is never stuck in an inconsistent state
+      try {
+        // Clear localStorage backup
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('quotes');
 
+        // Clear extension cookies (if running in extension context)
+        await clearAuthCookies();
+
+        console.log('Local cleanup completed');
+      } catch (error: any) {
+        console.error('Local cleanup failed:', error);
+        errors.push(`Local cleanup failed: ${error.message}`);
+      }
+
+      // Always update auth state to logged out
       setAuthState({
         user: null,
         isLoading: false,
         isAuthenticated: false,
         error: null
       });
+    }
 
+    // Return result based on what succeeded
+    if (backendLogoutSuccess && supabaseLogoutSuccess) {
       return { success: true };
-    } catch (error: any) {
-      console.error('Sign out error:', error);
-      // Even if there's an error, clear local state
-      setAuthState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false,
-        error: null
-      });
-      // Clear localStorage anyway
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('quotes');
-      return { success: false, error: error.message };
+    } else if (backendLogoutSuccess || supabaseLogoutSuccess) {
+      // Partial success - user is effectively logged out
+      console.warn('Partial logout success:', { backendLogoutSuccess, supabaseLogoutSuccess, errors });
+      return { 
+        success: true, 
+        warning: `Partial logout: ${errors.join(', ')}`,
+        backendLogoutSuccess,
+        supabaseLogoutSuccess
+      };
+    } else {
+      // Both failed, but local cleanup still happened
+      console.error('Logout failed:', errors);
+      return { 
+        success: false, 
+        error: `Logout failed: ${errors.join(', ')}`,
+        localCleanupCompleted: true // User is still effectively logged out locally
+      };
     }
   }, []);
 

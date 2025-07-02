@@ -165,6 +165,7 @@ export default function ResponsePage() {
           setLftBtnTxt("Home")
           setBtnTxtClr("--primary-orange")
           setRtBtnTxt("RETRY :)")
+          setisError("API Error")
         }
       }) : (
         chrome.runtime.sendMessage({ action: "saveNotes", data: {
@@ -190,6 +191,7 @@ export default function ResponsePage() {
             setLftBtnTxt("BACK")
             setBtnTxtClr("--primary-orange")
             setRtBtnTxt("RETRY :)")
+            setisError("API Error")
           }
         })
       )
