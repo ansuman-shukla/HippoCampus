@@ -22,7 +22,7 @@ async def save_link(
     request: Request
 ):
     """Endpoint for saving links to vector database"""
-    user_id = request.cookies.get("user_id")
+    user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized save attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -54,9 +54,9 @@ async def search_links(
 ):
     """API endpoint for document search"""
 
-    user_id = request.cookies.get("user_id")
+    user_id = getattr(request.state, 'user_id', None)
     if not user_id:
-        logger.warning("Unauthorized save attempt - missing user ID")
+        logger.warning("Unauthorized search attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
@@ -100,7 +100,7 @@ async def delete_link(
     logger.info(f"doc_id_pincone validation passed: '{doc_id_pincone}'")
     
     # Validate user authentication
-    user_id = request.cookies.get("user_id")
+    user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized delete attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -148,9 +148,9 @@ async def delete_link(
 
 @router.get("/get")
 async def get_all_bookmarks(request: Request):
-    user_id = request.cookies.get("user_id")
+    user_id = getattr(request.state, 'user_id', None)
     if not user_id:
-        logger.warning("Unauthorized save attempt - missing user ID")
+        logger.warning("Unauthorized get attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
     
     try:

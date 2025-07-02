@@ -148,11 +148,16 @@ async def auth_status(request: Request):
     if access_token:
         try:
             payload = await decodeJWT(access_token)
+            user_metadata = payload.get("user_metadata", {})
             result.update({
                 "is_authenticated": True,
                 "user_id": payload.get("sub"),
                 "token_valid": True,
                 "user_email": payload.get("email"),
+                "user_name": user_metadata.get("full_name"),
+                "full_name": user_metadata.get("full_name"),
+                "user_picture": user_metadata.get("picture"),
+                "picture": user_metadata.get("picture"),
                 "token_expires": payload.get("exp")
             })
         except Exception as e:

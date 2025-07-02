@@ -20,7 +20,7 @@ async def get_all_notes(request: Request):
     Get all notes for a user with enhanced error handling.
     """
     try:
-        user_id = request.cookies.get("user_id")
+        user_id = getattr(request.state, 'user_id', None)
         if not user_id:
             logger.warning("Unauthorized access attempt - missing user ID")
             return create_error_response(
@@ -62,7 +62,7 @@ async def create_new_note(note: NoteSchema, request: Request):
     Create a new note for a user with enhanced error handling.
     """
     try:
-        user_id = request.cookies.get("user_id")
+        user_id = getattr(request.state, 'user_id', None)
         if not user_id:
             logger.warning("Unauthorized access attempt - missing user ID")
             return create_error_response(
@@ -103,7 +103,7 @@ async def update_existing_note(note_id: str, note: dict, request: Request):
     """
     Update an existing note for a user.
     """
-    user_id = request.cookies.get("user_id")
+    user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized update attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -114,7 +114,7 @@ async def search_notes_by_query(request: Request, query: str , filter: dict = No
     """
     Search notes for a user based on a query string.
     """
-    user_id = request.cookies.get("user_id")
+    user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized search attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -127,7 +127,7 @@ async def delete_existing_note(request: Request, note_id: str):
     """
     Delete an existing note for a user.
     """
-    user_id = request.cookies.get("user_id")
+    user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized delete attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")

@@ -88,7 +88,8 @@ const AnimatedRoutes = () => {
             });
             
             if (verificationCookie && location.pathname === "/") {
-              console.log('Backend cookies set successfully from localStorage, navigating to submit');
+              console.log('Backend cookies set successfully from localStorage, checking auth status');
+              await checkAuthStatus();
               Navigate("/submit");
             }
             return;
@@ -115,7 +116,10 @@ const AnimatedRoutes = () => {
           });
           
           if (verificationCookie) {
-            console.log('Backend cookies set successfully, navigating to submit');
+            console.log('Backend cookies set successfully, checking auth status to populate localStorage');
+            
+            // Immediately check auth status to populate localStorage with user info
+            await checkAuthStatus();
             
             // Clean up external auth cookies after successful transfer
             chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
@@ -135,8 +139,10 @@ const AnimatedRoutes = () => {
         chrome.cookies.get({
           url: import.meta.env.VITE_BACKEND_URL,
           name: 'access_token',
-        }, (cookie) => {
+        }, async (cookie) => {
           if (cookie && location.pathname === "/") {
+            // User is authenticated, ensure localStorage is populated
+            await checkAuthStatus();
             Navigate("/submit");
           } else if (!cookie && !accessToken) {
             // No authentication found, continue checking with shorter interval
@@ -250,6 +256,8 @@ const AnimatedRoutes = () => {
         });
 
         if (cookie && location.pathname === "/") {
+          // User is authenticated, ensure localStorage is populated before navigation
+          await checkAuthStatus();
           Navigate("/submit");
         }
 
@@ -259,28 +267,37 @@ const AnimatedRoutes = () => {
           setQuotes(JSON.parse(localStorage.getItem("quotes") || "[]"));
           console.log("have set the quotes")
         }else{
-          chrome.runtime.sendMessage(
-            {
-              action: "getQuotes"
-            },
-            (response) => {
-              if (response.success) {
-                if (response.data && Array.isArray(response.data)) {
-                  const filteredQuotes = response.data.filter((quote: string) => quote.length > 0);
-                  setQuotes(prev => [
-                    ...new Set([...prev, ...filteredQuotes])
-                  ]);
-                  console.log("GOT QUOTES FROM BACKEND")
-                  localStorage.setItem("quotes", JSON.stringify(filteredQuotes));
-                  console.log("Quotes are set")
+          const fetchQuotes = (retryCount = 0) => {
+            chrome.runtime.sendMessage(
+              {
+                action: "getQuotes"
+              },
+              (response) => {
+                if (response && response.success) {
+                  if (response.data && Array.isArray(response.data)) {
+                    const filteredQuotes = response.data.filter((quote: string) => quote.length > 0);
+                    setQuotes(prev => [
+                      ...new Set([...prev, ...filteredQuotes])
+                    ]);
+                    console.log("GOT QUOTES FROM BACKEND")
+                    localStorage.setItem("quotes", JSON.stringify(filteredQuotes));
+                    console.log("Quotes are set")
+                  } else {
+                    console.error("Response data is not an array:", response.data);
+                  }
                 } else {
-                  console.error("Response data is not an array:", response.data);
+                  console.error("Failed to get quotes:", response?.error || "No response");
+                  // Retry up to 2 times with increasing delay for new users
+                  if (retryCount < 2) {
+                    console.log(`Retrying quotes fetch in ${(retryCount + 1) * 1000}ms...`);
+                    setTimeout(() => fetchQuotes(retryCount + 1), (retryCount + 1) * 1000);
+                  }
                 }
-              } else {
-                console.error("Failed to get quotes:", response.error);
               }
-            }
-          );
+            );
+          };
+          
+          fetchQuotes();
         }
       } catch (error) {
         console.error("Error handling auth flow:", error);

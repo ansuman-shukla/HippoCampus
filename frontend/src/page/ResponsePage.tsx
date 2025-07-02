@@ -87,7 +87,25 @@ export default function ResponsePage() {
           localStorage.setItem('user_name', username);
           console.log('Username cached in localStorage for future use');
         } else {
-          console.log('No username found in cookies');
+          console.log('No username found in cookies, trying to fetch auth status');
+          // As a fallback, try to get auth status which should populate localStorage
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/status`, {
+            method: 'GET',
+            credentials: 'include',
+          })
+            .then(response => response.json())
+            .then(data => {
+              if (data.is_authenticated && data.full_name) {
+                const firstName = data.full_name.split(" ")[0];
+                const username = firstName.length > 8 ? firstName.substring(0, 8) : firstName;
+                setSubTxt(username);
+                localStorage.setItem('user_name', username);
+                console.log('Username fetched from auth status and cached');
+              }
+            })
+            .catch(error => {
+              console.log('Failed to fetch auth status:', error);
+            });
         }
       });
     }

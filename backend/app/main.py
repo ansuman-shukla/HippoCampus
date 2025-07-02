@@ -216,8 +216,9 @@ app = FastAPI(
 async def authorisation_middleware(request: Request, call_next):
     """
     Enhanced authentication middleware with improved token refresh capability
-    """    # Skip auth for health check, auth endpoints, and documentation
-    if request.url.path in ["/health", "/health/detailed", "/docs", "/redoc", "/openapi.json"] or request.url.path.startswith("/auth/"):
+    """    # Skip auth for health check, auth endpoints, quotes, and documentation
+    if (request.url.path in ["/health", "/health/detailed", "/docs", "/redoc", "/openapi.json"] or 
+        request.url.path.startswith("/auth/") or request.url.path.startswith("/quotes")):
         return await call_next(request)
     
     try:
