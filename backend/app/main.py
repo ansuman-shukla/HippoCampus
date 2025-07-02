@@ -146,11 +146,15 @@ def handle_token_refresh(refresh_token):
             # Check for "already used" error - this means we need to re-authenticate
             if "already_used" in error_detail.lower() or "already used" in error_detail:
                 logger.warning("Refresh token already used - requiring re-authentication")
-                return None, None, create_error_response(
+                # Create response that will clear cookies
+                error_response = create_error_response(
                     "Session expired. Please log in again.",
                     status_code=401,
                     error_type="session_expired"
                 )
+                # Add flag to clear cookies
+                error_response.headers["X-Clear-Auth"] = "true"
+                return None, None, error_response
             
             return None, None, create_error_response(
                 error_detail,
@@ -246,14 +250,20 @@ async def authorisation_middleware(request: Request, call_next):
             new_access_token, new_refresh_token, error_response = await handle_token_refresh(refresh_token)
             if error_response:
                 # Check if this is a session expired error requiring re-authentication
-                if error_response.status_code == 401 and "session_expired" in str(error_response.body):
-                    # Clear cookies to force fresh login
+                if (error_response.status_code == 401 and 
+                    ("session_expired" in str(error_response.body) or 
+                     error_response.headers.get("X-Clear-Auth") == "true")):
+                    # Clear all auth-related cookies
+                    logger.info("Session expired - clearing all auth cookies")
                     response = error_response
-                    response.delete_cookie("access_token", samesite="none", secure=True)
-                    response.delete_cookie("refresh_token", samesite="none", secure=True)
-                    response.delete_cookie("user_id")
-                    response.delete_cookie("user_name")
-                    response.delete_cookie("user_picture")
+                    # Clear auth cookies with proper domain and security settings
+                    response.delete_cookie("access_token", path="/", samesite="none", secure=True, httponly=True)
+                    response.delete_cookie("refresh_token", path="/", samesite="none", secure=True, httponly=True)
+                    response.delete_cookie("user_id", path="/", httponly=True)
+                    response.delete_cookie("user_name", path="/", httponly=True)
+                    response.delete_cookie("user_picture", path="/", httponly=True)
+                    # Add header to signal frontend
+                    response.headers["X-Auth-Required"] = "true"
                 return error_response
             
             # Decode the new access token to get user info
