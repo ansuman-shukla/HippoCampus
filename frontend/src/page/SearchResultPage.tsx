@@ -74,7 +74,7 @@ const SearchResponse: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [DeleteClicked, setDeleteClicked] = useState<boolean>(false);
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
-  const [DeleteSuccess, setDeleteSuccess] = useState<boolean>(true);
+  const [DeleteSuccess, setDeleteSuccess] = useState<boolean>(false);
   const [filteredBrowserBookmarks, setFilteredBrowserBookmarks] = useState<Array<{ url: string, title: string }>>([]);
   const [activeTab, setActiveTab] = useState("All");
   const tabs = ["All", "Bookmark", "Note"];
@@ -304,7 +304,11 @@ const SearchResponse: React.FC = () => {
               title={card.title}
               description={card.fullDescription}
               bgColor={card.bgColor}
-              onClick={() => setSelectedIndex(index)}
+              onClick={() => {
+                setSelectedIndex(index);
+                setConfirmDelete(false);
+                setDeleteSuccess(false);
+              }}
               isSelected={false}
               RedirectUrl={card.RedirectUrl}
               date={card.date}
