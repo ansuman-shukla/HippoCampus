@@ -75,20 +75,11 @@ const SearchResponse: React.FC = () => {
   const [DeleteClicked, setDeleteClicked] = useState<boolean>(false);
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
   const [DeleteSuccess, setDeleteSuccess] = useState<boolean>(true);
-  const [DeletedBookmarks, setDeletedBookmarks] = useState(new Set());
   const [filteredBrowserBookmarks, setFilteredBrowserBookmarks] = useState<Array<{ url: string, title: string }>>([]);
   const [activeTab, setActiveTab] = useState("All");
   const tabs = ["All", "Bookmark", "Note"];
 
-  
-
-
   const allBookmarks: string[] = [];
-  useEffect(() => {
-    if (localStorage.getItem("deletedBookmarks")) {
-      setDeletedBookmarks(new Set(JSON.parse(localStorage.getItem("deletedBookmarks") || "[]")));
-    }
-  }, []);
 
   useEffect(()=>{
     console.log("The active tab is:", activeTab);
@@ -236,42 +227,30 @@ const SearchResponse: React.FC = () => {
   const handleDelete = () => {
     setIsLoading(true);
     if (selectedIndex !== null) {
-    } else {
-    }
-                chrome.runtime.sendMessage({ action: "delete", query: (selectedIndex !== null ? Card[selectedIndex].ID : "") },
-
-      (response) => {
-        if (response) {
-          if (response.detail === "Failed to delete document") {
-            setDeleteSuccess(false);
-            setIsLoading(false);
-          } else {
-            setCards(prevCards => prevCards.filter((_, index) => index !== selectedIndex));
-
-            if (selectedIndex !== null && Card[selectedIndex]) {
-              const idToDelete = Card[selectedIndex].ID;
-              setDeletedBookmarks(prevSet => {
-                const newSet = new Set(prevSet);
-                newSet.add(idToDelete);
-                localStorage.setItem("deletedBookmarks", JSON.stringify(Array.from(newSet)));
-                return newSet;
-              });
-            }
-
-
-            if (selectedIndex !== null) {
-              console.log("Now deleted the bookmark :", Card[selectedIndex]);
-            }
-            console.log("Deleted Bookmarks: ", DeletedBookmarks);
-            setDeleteSuccess(true);
-            setIsLoading(false);
-          }
+      const cardToDelete = Card[selectedIndex];
+      const isNote = cardToDelete.type === "Note";
+      const action = isNote ? "deleteNote" : "delete";
+      
+      chrome.runtime.sendMessage({ action: action, query: cardToDelete.ID }, (response) => {
+        if (response && response.success) {
+          // Successfully deleted from backend, now remove from UI
+          setCards(prevCards => prevCards.filter((_, index) => index !== selectedIndex));
+          setSelectedIndex(null);
+          setDeleteSuccess(true);
+          setIsLoading(false);
+          setConfirmDelete(true);
+          
+          console.log(`Successfully deleted ${isNote ? 'note' : 'bookmark'}:`, cardToDelete);
         } else {
-          console.error("API Error:", response.error);
+          console.error("Delete failed:", response?.error);
           setDeleteSuccess(false);
           setIsLoading(false);
+          setConfirmDelete(true);
         }
-      })
+      });
+    } else {
+      setIsLoading(false);
+    }
   }
 
 
@@ -288,8 +267,8 @@ const SearchResponse: React.FC = () => {
       style={{ backgroundColor: responseData.length === 0 ? 'var(--primary-red)' : 'var(--primary-white)' }}
 
       className={`relative max-w-md  rounded-lg w-[420px] h-[500px] flex flex-col justify-center border border-black py-0 overflow-hidden`}>
-      {Card.length === 0 || Card.filter(card => !DeletedBookmarks.has(card.ID)).length === 0 ? (
-        <p className='text-center text-2xl black mb-3 pb-7 nyr-semibold'>Oops ! No Bookmarks found</p>
+      {Card.length === 0 ? (
+        <p className='text-center text-2xl black mb-3 pb-7 nyr-semibold'>Oops ! No items found</p>
       ) : (<>
       
         {isSearchAll && selectedIndex === null && 
@@ -309,35 +288,30 @@ const SearchResponse: React.FC = () => {
         [&::-webkit-scrollbar]:hidden w-[100%] h-[100%]`}>
         {selectedIndex === null
           ?
-          Card.map((card, index) => {
-            const isDeleted = DeletedBookmarks.has(card.ID);
-
-            return isDeleted ?
-              null :
-              <Cards
-                key={index}
-                title={card.title}
-                description={card.fullDescription}
-                bgColor={card.bgColor}
-                onClick={() => setSelectedIndex(index)}
-                isSelected={false}
-                RedirectUrl={card.RedirectUrl}
-                date={card.date}
-                confirmDelete={confirmDelete}
-                setDeleteClicked={setDeleteClicked}
-                isSearchAll={isSearchAll && activeTab === "All"}
-                type={card.type}
-                activeTab={activeTab}
-
-              />
-          }
+          Card.map((card, index) => (
+            <Cards
+              key={index}
+              title={card.title}
+              description={card.fullDescription}
+              bgColor={card.bgColor}
+              onClick={() => setSelectedIndex(index)}
+              isSelected={false}
+              RedirectUrl={card.RedirectUrl}
+              date={card.date}
+              confirmDelete={confirmDelete}
+              setDeleteClicked={setDeleteClicked}
+              isSearchAll={isSearchAll && activeTab === "All"}
+              type={card.type}
+              activeTab={activeTab}
+            />
+          )
 
           )
           : (
 
             DeleteClicked ?
               <p className='nyr flex justify-center items-center bg-[var(--primary-red)] text-2xl text-center text-black
-              w-[100%] h-[90%]'>Are you sure you want to delete this bookmark ?</p>
+              w-[100%] h-[90%]'>Are you sure you want to delete this item?</p>
               :
               confirmDelete ?
                 isLoading ?
@@ -347,9 +321,9 @@ const SearchResponse: React.FC = () => {
                   :
                   DeleteSuccess ?
                     <p className='nyr flex justify-center items-center bg-[var(--primary-green)] text-2xl text-center text-black
-            w-[100%] h-[90%]'>Bookmark Deleted Successfully !</p> :
+            w-[100%] h-[90%]'>Item Deleted Successfully!</p> :
                     <p className='nyr flex justify-center items-center bg-[var(--primary-red)] text-2xl text-center text-black  
-            w-[100%] h-[90%]'>Failed to delete Bookmark !</p>
+            w-[100%] h-[90%]'>Failed to delete item!</p>
                 :
 
                 <Cards

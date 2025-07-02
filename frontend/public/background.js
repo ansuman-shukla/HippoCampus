@@ -26,11 +26,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         // Fetch links first
         const linksResponse = await fetch(`${BACKEND_URL}/links/get`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: { 
-            'Content-Type': 'application/json'
-          }
+      method: 'GET',
+      credentials: 'include',
+      headers: { 
+        'Content-Type': 'application/json'
+      }
         });
         
         if (!linksResponse.ok) {
@@ -41,11 +41,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         
         // Then fetch notes (token refresh will have happened in first request if needed)
         const notesResponse = await fetch(`${BACKEND_URL}/notes/`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: { 
-            'Content-Type': 'application/json'
-          }
+      method: 'GET',
+      credentials: 'include',
+      headers: { 
+        'Content-Type': 'application/json'
+      }
         });
         
         if (!notesResponse.ok) {
@@ -54,10 +54,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         
         const notesData = await notesResponse.json();
         
-        sendResponse({ success: true, links: linksData, notes: notesData });
+      sendResponse({ success: true, links: linksData, notes: notesData });
       } catch (error) {
         console.error('SearchAll error:', error);
-        sendResponse({ success: false, error: error.message });
+      sendResponse({ success: false, error: error.message });
       }
     }
     
@@ -158,6 +158,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   else if (message.action === "delete") {
     fetch(`${BACKEND_URL}/links/delete?doc_id_pincone=${message.query}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+      .then(response => response.json())
+      .then(data => sendResponse({ success: true, data }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+  else if (message.action === "deleteNote") {
+    fetch(`${BACKEND_URL}/notes/${message.query}`, {
       method: 'DELETE',
       credentials: 'include'
     })

@@ -48,7 +48,7 @@ isSearchAll
             <div 
               className={`flex justify-between items-start overflow-hidden ${bgColor}`}
             >
-           {isSelected && type !== "Note" ? 
+           {isSelected ? 
            
            <button 
                    disabled={confirmDelete}
