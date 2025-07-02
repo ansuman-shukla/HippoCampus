@@ -1,5 +1,5 @@
 // Configuration - will be replaced during build
-const BACKEND_URL = '__VITE_BACKEND_URL__';
+const BACKEND_URL = 'http://127.0.0.1:8000';
 const API_URL = '__VITE_API_URL__';
 
 chrome.action.onClicked.addListener((tab) => {
@@ -157,7 +157,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   else if (message.action === "delete") {
-    fetch(`${BACKEND_URL}/links/delete?doc_id_pincone=${message.query}`, {
+    fetch(`${BACKEND_URL}/links/delete?doc_id_pincone=${encodeURIComponent(message.query)}`, {
       method: 'DELETE',
       credentials: 'include'
     })
@@ -167,7 +167,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   else if (message.action === "deleteNote") {
-    fetch(`${BACKEND_URL}/notes/${message.query}`, {
+    fetch(`${BACKEND_URL}/notes/${encodeURIComponent(message.query)}`, {
       method: 'DELETE',
       credentials: 'include'
     })

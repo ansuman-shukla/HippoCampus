@@ -127,6 +127,7 @@ const SearchResponse: React.FC = () => {
           return;
         }
         console.log("The query is:", query);
+        console.log("The responseData items:", responseData);
         const newCards = responseData.map((item: any, index: number) => ({
           key: Card.length + index + 1,
           title: item.title,
@@ -150,6 +151,7 @@ const SearchResponse: React.FC = () => {
         }
 
         ));
+        console.log("The newCards after mapping:", newCards);
         setCards(newCards);
       }else if(linksArray && notesArray){
         console.log("The links array is:", linksArray);
@@ -175,6 +177,7 @@ const SearchResponse: React.FC = () => {
         }
 
         ));
+        console.log("The newCards from linksArray/notesArray:", newCards);
         setCards(newCards);
       }
 
@@ -228,6 +231,13 @@ const SearchResponse: React.FC = () => {
     setIsLoading(true);
     if (selectedIndex !== null) {
       const cardToDelete = Card[selectedIndex];
+      console.log("=== DELETE DEBUG ===");
+      console.log("selectedIndex:", selectedIndex);
+      console.log("cardToDelete:", cardToDelete);
+      console.log("cardToDelete.ID:", cardToDelete.ID);
+      console.log("Card array:", Card);
+      console.log("==================");
+      
       const isNote = cardToDelete.type === "Note";
       const action = isNote ? "deleteNote" : "delete";
       

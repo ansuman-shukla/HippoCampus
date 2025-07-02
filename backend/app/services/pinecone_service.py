@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Dict
+import logging
 from app.core.pinecone_wrapper import safe_index, safe_pc
 from langchain_core.documents import Document
 from app.core.config import settings
@@ -9,6 +10,9 @@ from app.services.memories_service import save_memory_to_db
 from app.exceptions.httpExceptionsSearch import *
 from app.exceptions.httpExceptionsSave import *
 from app.exceptions.global_exceptions import ExternalServiceError
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 async def save_to_vector_db(obj: LinkSchema, namespace: str):
     """Save document to vector database using E5 embeddings"""
@@ -158,37 +162,63 @@ async def search_vector_db(
 
 async def delete_from_vector_db(doc_id: str, namespace: str):
     """
-    Delete document from vector database with enhanced error handling
+    Delete document from vector database with enhanced error handling and comprehensive logging
     """
+    logger.info(f"=== VECTOR DB DELETE STARTED ===")
+    logger.info(f"delete_from_vector_db called with doc_id: '{doc_id}', namespace: '{namespace}'")
+    
     try:
+        # Input validation with detailed logging
         if not doc_id:
+            logger.error(f"VALIDATION FAILED: doc_id is empty or None: '{doc_id}'")
             raise InvalidRequestError("Document ID is required")
         if not namespace:
+            logger.error(f"VALIDATION FAILED: namespace is empty or None: '{namespace}'")
             raise InvalidRequestError("Namespace is required")
-
-        # Delete using safe wrapper
-        await safe_index.delete(
+            
+        logger.info(f"Input validation passed - doc_id: '{doc_id}', namespace: '{namespace}'")
+        
+        # Check vector database connection
+        logger.info("Checking vector database connection...")
+        try:
+            # Test connection with index stats
+            stats = await safe_index.describe_index_stats()
+            logger.info(f"Vector DB connection successful. Index stats: {stats}")
+        except Exception as conn_e:
+            logger.error(f"Vector DB connection test failed: {str(conn_e)}")
+            raise VectorDBConnectionError(f"Failed to connect to vector database: {str(conn_e)}")
+        
+        # Perform the delete operation
+        logger.info(f"Attempting to delete vector with id: '{doc_id}' from namespace: '{namespace}'")
+        
+        delete_result = await safe_index.delete(
             ids=[doc_id],
             namespace=namespace
         )
+        
+        logger.info(f"Vector database delete operation completed. Result: {delete_result}")
+        logger.info(f"=== VECTOR DB DELETE COMPLETED SUCCESSFULLY ===")
+        
+        return {"status": "deleted", "doc_id": doc_id, "namespace": namespace, "delete_result": delete_result}
 
-        logger.info(f"Successfully deleted document {doc_id} from vector database")
-        return {"status": "deleted", "doc_id": doc_id}
-
-    except InvalidRequestError:
+    except InvalidRequestError as e:
+        logger.error(f"VECTOR DB DELETE FAILED: Validation error - {str(e)}")
         # Re-raise validation errors
         raise
+    except VectorDBConnectionError as e:
+        logger.error(f"VECTOR DB DELETE FAILED: Connection error - {str(e)}")
+        raise
     except ExternalServiceError as e:
-        logger.error(f"Vector database service error: {str(e)}")
+        logger.error(f"VECTOR DB DELETE FAILED: External service error - {str(e)}")
         raise DocumentStorageError(
             message="Vector database service unavailable",
             user_id=namespace,
             doc_id=doc_id
         ) from e
     except Exception as e:
-        logger.error("Error deleting document", extra={"user_id": namespace, "doc_id": doc_id}, exc_info=True)
+        logger.error(f"VECTOR DB DELETE FAILED: Unexpected error - doc_id: '{doc_id}', namespace: '{namespace}', error: {str(e)}", exc_info=True)
         raise DocumentStorageError(
-            message="Failed to delete document",
+            message="Failed to delete document from vector database",
             user_id=namespace,
             doc_id=doc_id
         ) from e

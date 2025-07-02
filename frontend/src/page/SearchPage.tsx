@@ -85,14 +85,14 @@ export default function SearchPage({ Quote }: Props) {
                             url: item.source_url,
                             content: item.note,
                             date: item.date,
-                            ID: item.ID,
+                            ID: item.doc_id,
                             type: item.type
                         }));
                         const notesArray = response.notes.map((item: any) => ({
                             title: item.title,
                             content: item.note,
                             date: item.date,
-                            ID: item.ID,
+                            ID: item.doc_id,
                             type: item.type
                         }));
                         console.log("The links array is from search all: ", linksArray);

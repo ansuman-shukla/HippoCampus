@@ -79,25 +79,71 @@ async def delete_link(
     doc_id_pincone: str,
     request: Request
 ):
+    """Delete a link/bookmark with comprehensive logging for debugging"""
+    
+    # Log the initial request details
+    logger.info(f"=== DELETE REQUEST STARTED ===")
+    logger.info(f"Received delete request for doc_id_pincone: '{doc_id_pincone}'")
+    logger.info(f"Request URL: {request.url}")
+    logger.info(f"Request method: {request.method}")
+    logger.info(f"Query params: {dict(request.query_params)}")
+    
+    # Validate doc_id_pincone parameter
+    if not doc_id_pincone or doc_id_pincone.strip() == "":
+        logger.error(f"Empty doc_id_pincone received: '{doc_id_pincone}'")
+        raise HTTPException(status_code=400, detail="Document ID is required and cannot be empty")
+    
+    if doc_id_pincone == "undefined" or doc_id_pincone == "null":
+        logger.error(f"Invalid doc_id_pincone received: '{doc_id_pincone}' - Frontend is sending undefined/null value")
+        raise HTTPException(status_code=400, detail="Invalid document ID: Frontend sent undefined/null value")
+    
+    logger.info(f"doc_id_pincone validation passed: '{doc_id_pincone}'")
+    
+    # Validate user authentication
     user_id = request.cookies.get("user_id")
     if not user_id:
-        logger.warning("Unauthorized save attempt - missing user ID")
+        logger.warning("Unauthorized delete attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
     
-    try:
-        logger.info(f"Attempting to delete document for user {user_id}")
-        result = await delete_from_vector_db(doc_id=doc_id_pincone, namespace=user_id)
-        await delete_from_db(doc_id_pincone)
-        logger.info(f"Successfully deleted document for user {user_id}")
-        return result
-    except DocumentSaveError as e:
-        logger.error(f"Document save failed for user {e.user_id}: {str(e)}", exc_info=True)
-        status_code = 400 if isinstance(e, InvalidURLError) else 503
-        raise HTTPException(status_code=status_code, detail=str(e))
-    except ValidationError as e:
-        logger.error(f"Invalid document data for user {user_id}: {str(e)}")
-        raise HTTPException(status_code=422, detail="Invalid document format")
+    logger.info(f"User authentication passed - user_id: '{user_id}'")
     
+    try:
+        logger.info(f"=== STARTING DELETE OPERATIONS ===")
+        logger.info(f"Attempting to delete document '{doc_id_pincone}' for user '{user_id}'")
+        
+        # Step 1: Delete from vector database
+        logger.info(f"STEP 1: Deleting from vector database...")
+        vector_result = await delete_from_vector_db(doc_id=doc_id_pincone, namespace=user_id)
+        logger.info(f"STEP 1 SUCCESS: Vector database deletion completed: {vector_result}")
+        
+        # Step 2: Delete from regular database
+        logger.info(f"STEP 2: Deleting from regular database...")
+        db_result = await delete_from_db(doc_id_pincone)
+        logger.info(f"STEP 2 SUCCESS: Regular database deletion completed: {db_result}")
+        
+        logger.info(f"=== DELETE OPERATIONS COMPLETED SUCCESSFULLY ===")
+        logger.info(f"Successfully deleted document '{doc_id_pincone}' for user '{user_id}'")
+        
+        return {
+            "status": "success",
+            "message": "Document deleted successfully",
+            "doc_id": doc_id_pincone,
+            "vector_result": vector_result,
+            "db_result": db_result
+        }
+        
+    except InvalidRequestError as e:
+        logger.error(f"DELETE FAILED: Invalid request - {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except VectorDBConnectionError as e:
+        logger.error(f"DELETE FAILED: Vector database connection error - {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Vector database unavailable: {str(e)}")
+    except DocumentStorageError as e:
+        logger.error(f"DELETE FAILED: Document storage error - {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Storage service error: {str(e)}")
+    except Exception as e:
+        logger.critical(f"DELETE FAILED: Unexpected error deleting document '{doc_id_pincone}' for user '{user_id}': {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error during deletion")
 
 
 @router.get("/get")

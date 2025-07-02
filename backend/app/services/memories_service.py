@@ -78,29 +78,55 @@ async def get_all_bookmarks_from_db(user_id):
 
 async def delete_from_db(doc_id_pincone: str):
     """
-    Delete a memory document with enhanced error handling
+    Delete a memory document with enhanced error handling and comprehensive logging
     """
+    logger.info(f"=== DATABASE DELETE STARTED ===")
+    logger.info(f"delete_from_db called with doc_id_pincone: '{doc_id_pincone}'")
+    
     try:
+        # Input validation with detailed logging
         if not doc_id_pincone:
+            logger.error(f"VALIDATION FAILED: doc_id_pincone is empty or None: '{doc_id_pincone}'")
             raise MemoryValidationError("Document ID is required")
 
+        logger.info(f"Input validation passed - doc_id_pincone: '{doc_id_pincone}'")
+        
+        # Check database connection
+        logger.info("Checking database connection...")
+        try:
+            # Test connection with a simple operation
+            await safe_collection_memories.find_one({"doc_id": doc_id_pincone})
+            logger.info("Database connection successful")
+        except Exception as conn_e:
+            logger.error(f"Database connection test failed: {str(conn_e)}")
+            raise DatabaseConnectionError(f"Failed to connect to database: {str(conn_e)}")
+        
+        # Perform the delete operation
+        logger.info(f"Attempting to delete document with doc_id: '{doc_id_pincone}' from memories collection")
+        
         result = await safe_collection_memories.delete_one({"doc_id": doc_id_pincone})
-
+        
+        logger.info(f"Database delete operation completed. Deleted count: {result.deleted_count}")
+        
         if result.deleted_count == 0:
+            logger.warning(f"DOCUMENT NOT FOUND: No document found with doc_id: '{doc_id_pincone}'")
             raise MemoryNotFoundError(f"Memory with id {doc_id_pincone} not found")
 
-        logger.info(f"Successfully deleted memory with id {doc_id_pincone}")
-        return {"status": "deleted"}
+        logger.info(f"=== DATABASE DELETE COMPLETED SUCCESSFULLY ===")
+        logger.info(f"Successfully deleted memory with id '{doc_id_pincone}' (deleted_count: {result.deleted_count})")
+        
+        return {"status": "deleted", "doc_id": doc_id_pincone, "deleted_count": result.deleted_count}
 
-    except (MemoryValidationError, MemoryNotFoundError):
+    except (MemoryValidationError, MemoryNotFoundError) as e:
+        logger.error(f"DATABASE DELETE FAILED: {type(e).__name__} - {str(e)}")
         # Re-raise our custom exceptions
         raise
     except DatabaseConnectionError as e:
-        logger.error(f"Database connection error: {str(e)}")
+        logger.error(f"DATABASE DELETE FAILED: Database connection error - {str(e)}")
         raise MemoryDatabaseError(f"Database connection failed: {str(e)}")
     except PyMongoError as e:
-        logger.error(f"Database error: {str(e)}")
+        logger.error(f"DATABASE DELETE FAILED: PyMongo error - {str(e)}")
         raise MemoryDatabaseError(f"Database error: {str(e)}")
     except Exception as e:
-        logger.error(f"Unexpected error deleting memory: {str(e)}", exc_info=True)
+        logger.error(f"DATABASE DELETE FAILED: Unexpected error deleting memory '{doc_id_pincone}': {str(e)}", exc_info=True)
         raise MemoryServiceError(f"Error deleting memory: {str(e)}")
