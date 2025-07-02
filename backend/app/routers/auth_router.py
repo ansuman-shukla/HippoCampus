@@ -8,6 +8,20 @@ import time
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
+def set_secure_cookie(response, key, value, expires_seconds):
+    """Set a secure cookie with proper attributes"""
+    try:
+        response.set_cookie(
+            key=key,
+            value=value,
+            expires=int(time.time() + expires_seconds),
+            httponly=True,
+            secure=True,
+            samesite="none"
+        )
+    except Exception as e:
+        logger.error(f"Error setting {key} cookie: {str(e)}")
+
 class LoginRequest(BaseModel):
     access_token: str
     refresh_token: str
@@ -15,11 +29,10 @@ class LoginRequest(BaseModel):
 @router.post("/login")
 async def login(request: Request, login_details: LoginRequest):
     try:
-        # Simulate cookie setting after successful login verification
-        # Real implementation should verify tokens and then set cookies
+        # Set cookies using the same secure method as middleware
         response = JSONResponse(status_code=200, content={"message": "Login successful"})
-        response.set_cookie("access_token", login_details.access_token, httponly=True, max_age=3600)
-        response.set_cookie("refresh_token", login_details.refresh_token, httponly=True, max_age=604800)
+        set_secure_cookie(response, "access_token", login_details.access_token, 3600)  # 1 hour
+        set_secure_cookie(response, "refresh_token", login_details.refresh_token, 604800)  # 7 days
         return response
     except Exception as e:
         logger.error(f"Login failed: {str(e)}")
@@ -50,36 +63,37 @@ async def refresh_token_endpoint(request: Request):
         # Refresh the token
         token_data = await refresh_access_token(refresh_token)
         
+        # Validate the new access token before setting cookies
+        new_access_token = token_data.get("access_token")
+        new_refresh_token = token_data.get("refresh_token", refresh_token)
+        
+        if not new_access_token:
+            raise HTTPException(status_code=401, detail="Token refresh failed")
+        
+        # Verify the new token is valid
+        payload = await decodeJWT(new_access_token)
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid refreshed token")
+        
         # Create response with new tokens
         response = JSONResponse({
             "success": True,
             "message": "Token refreshed successfully",
-            "access_token": token_data.get("access_token"),
-            "refresh_token": token_data.get("refresh_token"),
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
             "expires_in": token_data.get("expires_in"),
             "token_type": token_data.get("token_type", "Bearer")
         })
         
-        # Set new tokens as cookies
-        response.set_cookie(
-            key="access_token",
-            value=token_data.get("access_token"),
-            httponly=True,
-            secure=True,
-            samesite="none",
-            max_age=3600  # 1 hour
-        )
+        # Set new tokens using secure cookie method (consistent with middleware)
+        set_secure_cookie(response, "access_token", new_access_token, 3600)  # 1 hour
         
-        if token_data.get("refresh_token"):
-            response.set_cookie(
-                key="refresh_token",
-                value=token_data.get("refresh_token"),
-                httponly=True,
-                secure=True,
-                samesite="none",
-                max_age=604800  # 7 days
-            )
+        # Only set new refresh token if it's different from the original
+        if new_refresh_token != refresh_token:
+            set_secure_cookie(response, "refresh_token", new_refresh_token, 604800)  # 7 days
         
+        logger.info(f"Manual token refresh successful for user: {user_id}")
         return response
         
     except HTTPException:
@@ -101,13 +115,18 @@ async def logout(request: Request):
         "message": "Logged out successfully"
     })
     
-    # Clear authentication cookies
-    response.delete_cookie("access_token", samesite="none", secure=True)
-    response.delete_cookie("refresh_token", samesite="none", secure=True)
-    response.delete_cookie("user_id")
-    response.delete_cookie("user_name")
-    response.delete_cookie("user_picture")
+    # Clear authentication cookies with all possible attribute combinations
+    # to ensure we remove any duplicate cookies
+    auth_cookies = ["access_token", "refresh_token", "user_id", "user_name", "user_picture"]
     
+    for cookie_name in auth_cookies:
+        # Clear with different attribute combinations to catch all variations
+        response.delete_cookie(cookie_name)
+        response.delete_cookie(cookie_name, path="/")
+        response.delete_cookie(cookie_name, samesite="none", secure=True)
+        response.delete_cookie(cookie_name, path="/", samesite="none", secure=True)
+    
+    logger.info("User logged out, all auth cookies cleared")
     return response
 
 @router.get("/status")

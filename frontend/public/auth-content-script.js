@@ -30,47 +30,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Also check if tokens exist and try to set cookies if they're missing
-function ensureTokensAreCookies() {
+// Check if tokens exist and notify background script for auth completion
+function checkForAuthCompletion() {
   const accessToken = localStorage.getItem('access_token');
   const refreshToken = localStorage.getItem('refresh_token');
   
   if (accessToken && refreshToken) {
-    // Check if cookies already exist
-    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [name, value] = cookie.trim().split('=');
-      acc[name] = value;
-      return acc;
-    }, {});
+    console.log('Content script: Auth tokens found, notifying background script');
     
-    if (!cookies.access_token || !cookies.refresh_token) {
-      console.log('Content script: Setting missing cookies from localStorage');
-      
-      // Try to get session data for expiration
-      let expirationDate = new Date(Date.now() + 60 * 60 * 1000); // Default 1 hour
-      const sessionData = localStorage.getItem('session');
-      if (sessionData) {
-        try {
-          const session = JSON.parse(sessionData);
-          if (session.expires_in) {
-            expirationDate = new Date(Date.now() + (session.expires_in * 1000));
-          }
-        } catch (e) {
-          console.log('Could not parse session data:', e);
-        }
-      }
-      
-      // Set cookies with proper attributes
-      document.cookie = `access_token=${accessToken}; path=/; SameSite=None; Secure; expires=${expirationDate.toUTCString()}`;
-      document.cookie = `refresh_token=${refreshToken}; path=/; SameSite=None; Secure; expires=${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString()}`;
-      
-      console.log('Content script: Cookies set from localStorage');
-      
-      // Notify background script that auth is complete
-      chrome.runtime.sendMessage({ action: "authCompleted" }).catch(error => {
-        console.log('Could not notify background script:', error);
-      });
-    }
+    // Notify background script that auth is complete
+    // Backend will handle cookie setting via login endpoint
+    chrome.runtime.sendMessage({ action: "authCompleted" }).catch(error => {
+      console.log('Could not notify background script:', error);
+    });
   }
 }
 
@@ -81,20 +53,20 @@ function checkForTokenChanges() {
   if (currentAccessToken && currentAccessToken !== lastAccessToken) {
     console.log('Content script: New token detected in localStorage');
     lastAccessToken = currentAccessToken;
-    ensureTokensAreCookies();
+    checkForAuthCompletion();
   }
 }
 
 // Run on page load
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', ensureTokensAreCookies);
+  document.addEventListener('DOMContentLoaded', checkForAuthCompletion);
 } else {
-  ensureTokensAreCookies();
+  checkForAuthCompletion();
 }
 
 // Also run periodically in case auth completes after page load
-setTimeout(ensureTokensAreCookies, 2000);
-setTimeout(ensureTokensAreCookies, 5000);
+setTimeout(checkForAuthCompletion, 2000);
+setTimeout(checkForAuthCompletion, 5000);
 
 // Monitor for changes more frequently
 setInterval(checkForTokenChanges, 1000);

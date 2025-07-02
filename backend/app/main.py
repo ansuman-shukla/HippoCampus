@@ -182,23 +182,25 @@ def update_token_cookies(response, new_access_token, new_refresh_token, original
         logger.error(f"Error setting refreshed token cookies: {str(e)}")
 
 def update_user_cookies(response, request, user_id, payload):
-    """Update user-related cookies if not already set"""
+    """Update user-related cookies if not already set or different"""
     try:
-        # Set user_id cookie if not already set
-        if request.cookies.get("user_id") is None:
+        # Set user_id cookie if not already set or different
+        current_user_id = request.cookies.get("user_id")
+        if current_user_id != user_id:
             set_user_cookie(response, "user_id", user_id)
 
-        # Set user metadata cookies if not already set
-        if (request.cookies.get("user_name") is None or
-            request.cookies.get("user_picture") is None):
-            user_metadata = payload.get("user_metadata", {})
-            full_name = user_metadata.get("full_name")
-            picture = user_metadata.get("picture")
+        # Set user metadata cookies if not already set or different
+        user_metadata = payload.get("user_metadata", {})
+        full_name = user_metadata.get("full_name")
+        picture = user_metadata.get("picture")
 
-            if full_name:
-                set_user_cookie(response, "user_name", full_name)
-            if picture:
-                set_user_cookie(response, "user_picture", picture)
+        current_user_name = request.cookies.get("user_name")
+        current_user_picture = request.cookies.get("user_picture")
+
+        if full_name and current_user_name != full_name:
+            set_user_cookie(response, "user_name", full_name)
+        if picture and current_user_picture != picture:
+            set_user_cookie(response, "user_picture", picture)
                 
     except Exception as e:
         logger.error(f"Error setting user cookies: {str(e)}")
