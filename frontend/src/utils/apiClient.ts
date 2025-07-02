@@ -14,39 +14,6 @@ interface ApiError {
   status_code?: number;
 }
 
-// Request queue to prevent concurrent refresh attempts
-let isRefreshing = false;
-const requestQueue: Array<() => void> = [];
-
-// Process queued requests after refresh
-const processQueue = () => {
-  requestQueue.forEach(callback => callback());
-  requestQueue.length = 0;
-};
-
-// Handle session expiration
-const handleSessionExpired = async () => {
-  // Clear all auth-related data
-  try {
-    // Clear cookies via Chrome API
-    await chrome.cookies.remove({ url: import.meta.env.VITE_BACKEND_URL, name: "access_token" });
-    await chrome.cookies.remove({ url: import.meta.env.VITE_BACKEND_URL, name: "refresh_token" });
-    await chrome.cookies.remove({ url: import.meta.env.VITE_BACKEND_URL, name: "user_id" });
-    await chrome.cookies.remove({ url: import.meta.env.VITE_BACKEND_URL, name: "user_name" });
-    await chrome.cookies.remove({ url: import.meta.env.VITE_BACKEND_URL, name: "user_picture" });
-  } catch (error) {
-    console.error('Error clearing cookies:', error);
-  }
-  
-  // Clear any local storage
-  localStorage.clear();
-  
-  // Navigate to login page
-  window.location.hash = '#/';
-  
-  // Notify background script
-  chrome.runtime.sendMessage({ action: 'sessionExpired' });
-};
 
 /**
  * Make authenticated requests - backend handles token validation and refresh automatically
@@ -67,20 +34,6 @@ export const makeRequest = async <T = any>(
     ...options,
   };
 
-  // If we're currently refreshing, queue this request
-  if (isRefreshing && !endpoint.includes('/auth/')) {
-    return new Promise((resolve, reject) => {
-      requestQueue.push(async () => {
-        try {
-          const result = await makeRequest<T>(endpoint, options);
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
-  }
-
   try {
     const response = await fetch(url, defaultOptions);
     
@@ -99,21 +52,6 @@ export const makeRequest = async <T = any>(
           detail: `HTTP ${response.status}: ${response.statusText}`,
           status_code: response.status
         };
-      }
-      
-      // Check for session expiration
-      if (response.status === 401 && 
-          (errorData.error_type === 'session_expired' || 
-           response.headers.get('X-Auth-Required') === 'true')) {
-        isRefreshing = true;
-        await handleSessionExpired();
-        isRefreshing = false;
-        processQueue();
-        
-        const error = new Error('Session expired. Please log in again.');
-        (error as any).status = 401;
-        (error as any).errorType = 'session_expired';
-        throw error;
       }
       
       const error = new Error(errorData.detail || 'Request failed');

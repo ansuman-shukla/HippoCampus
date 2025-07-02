@@ -149,13 +149,7 @@ async def refresh_access_token(refresh_token: str) -> dict:
                 
                 try:
                     error_json = response.json()
-                    error_code = error_json.get("error_code", "")
                     detail = error_json.get("error_description", error_json.get("msg", "Invalid refresh token"))
-                    
-                    # Check for various refresh token failure scenarios
-                    if any(phrase in error_code.lower() for phrase in ["already_used", "invalid_grant", "revoked", "expired"]):
-                        detail = "Session expired. Please log in again."
-                
                 except Exception:
                     detail = "Invalid refresh token"
                 

@@ -101,14 +101,12 @@ async def logout(request: Request):
         "message": "Logged out successfully"
     })
     
-    # Clear authentication cookies with all proper attributes
-    response.delete_cookie("access_token", path="/", samesite="none", secure=True, httponly=True)
-    response.delete_cookie("refresh_token", path="/", samesite="none", secure=True, httponly=True)
-    response.delete_cookie("user_id", path="/", httponly=True)
-    response.delete_cookie("user_name", path="/", httponly=True)
-    response.delete_cookie("user_picture", path="/", httponly=True)
-    
-    logger.info("User logged out - all cookies cleared")
+    # Clear authentication cookies
+    response.delete_cookie("access_token", samesite="none", secure=True)
+    response.delete_cookie("refresh_token", samesite="none", secure=True)
+    response.delete_cookie("user_id")
+    response.delete_cookie("user_name")
+    response.delete_cookie("user_picture")
     
     return response
 
