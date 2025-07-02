@@ -23,6 +23,8 @@ load_dotenv()
 import logging
 import time
 from datetime import datetime
+import asyncio
+from collections import defaultdict
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +32,10 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Global refresh token locks to prevent race conditions
+refresh_locks = defaultdict(asyncio.Lock)
+active_refreshes = {}  # Store active refresh promises
 
 # Helper functions for authentication middleware
 def validate_user_id(payload, context="token"):
@@ -80,7 +86,7 @@ def set_user_cookie(response, key, value, expires_seconds=3600):
         logger.error(f"Error setting {key} cookie: {str(e)}")
 
 def handle_token_refresh(refresh_token):
-    """Handle token refresh logic and return new tokens"""
+    """Handle token refresh logic with concurrency control and return new tokens"""
     async def _refresh():
         if not refresh_token:
             logger.warning("No refresh token available for token refresh")
@@ -88,6 +94,32 @@ def handle_token_refresh(refresh_token):
                 "Access token expired and no refresh token available"
             )
         
+        # Use a lock per refresh token to prevent concurrent refreshes
+        lock = refresh_locks[refresh_token]
+        
+        async with lock:
+            # Check if there's already an active refresh for this token
+            if refresh_token in active_refreshes:
+                logger.info("Refresh already in progress, waiting for result...")
+                try:
+                    return await active_refreshes[refresh_token]
+                except Exception as e:
+                    logger.error(f"Waiting for active refresh failed: {str(e)}")
+                    # Continue with new refresh attempt
+            
+            # Create refresh promise
+            refresh_promise = asyncio.create_task(_do_refresh(refresh_token))
+            active_refreshes[refresh_token] = refresh_promise
+            
+            try:
+                result = await refresh_promise
+                return result
+            finally:
+                # Clean up
+                active_refreshes.pop(refresh_token, None)
+                refresh_locks.pop(refresh_token, None)
+    
+    async def _do_refresh(refresh_token):
         try:
             # Refresh the access token
             token_response = await refresh_access_token(refresh_token)
@@ -108,9 +140,20 @@ def handle_token_refresh(refresh_token):
             return new_access_token, new_refresh_token, None
             
         except HTTPException as refresh_error:
-            logger.error(f"Token refresh failed: {refresh_error.detail}")
+            error_detail = refresh_error.detail
+            logger.error(f"Token refresh failed: {error_detail}")
+            
+            # Check for "already used" error - this means we need to re-authenticate
+            if "already_used" in error_detail.lower() or "already used" in error_detail:
+                logger.warning("Refresh token already used - requiring re-authentication")
+                return None, None, create_error_response(
+                    "Session expired. Please log in again.",
+                    status_code=401,
+                    error_type="session_expired"
+                )
+            
             return None, None, create_error_response(
-                refresh_error.detail,
+                error_detail,
                 status_code=refresh_error.status_code,
                 error_type="auth_error"
             )
@@ -202,6 +245,15 @@ async def authorisation_middleware(request: Request, call_next):
             # Handle token refresh
             new_access_token, new_refresh_token, error_response = await handle_token_refresh(refresh_token)
             if error_response:
+                # Check if this is a session expired error requiring re-authentication
+                if error_response.status_code == 401 and "session_expired" in str(error_response.body):
+                    # Clear cookies to force fresh login
+                    response = error_response
+                    response.delete_cookie("access_token", samesite="none", secure=True)
+                    response.delete_cookie("refresh_token", samesite="none", secure=True)
+                    response.delete_cookie("user_id")
+                    response.delete_cookie("user_name")
+                    response.delete_cookie("user_picture")
                 return error_response
             
             # Decode the new access token to get user info

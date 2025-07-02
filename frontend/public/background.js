@@ -21,28 +21,47 @@ chrome.action.onClicked.addListener((tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "searchAll") {
-    Promise.all([
-      fetch(`${BACKEND_URL}/links/get`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: { 
-        'Content-Type': 'application/json'
+    // Make requests sequentially to avoid race conditions with token refresh
+    async function fetchAllData() {
+      try {
+        // Fetch links first
+        const linksResponse = await fetch(`${BACKEND_URL}/links/get`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!linksResponse.ok) {
+          throw new Error(`Links fetch failed: ${linksResponse.status}`);
+        }
+        
+        const linksData = await linksResponse.json();
+        
+        // Then fetch notes (token refresh will have happened in first request if needed)
+        const notesResponse = await fetch(`${BACKEND_URL}/notes/`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!notesResponse.ok) {
+          throw new Error(`Notes fetch failed: ${notesResponse.status}`);
+        }
+        
+        const notesData = await notesResponse.json();
+        
+        sendResponse({ success: true, links: linksData, notes: notesData });
+      } catch (error) {
+        console.error('SearchAll error:', error);
+        sendResponse({ success: false, error: error.message });
       }
-      }).then(response => response.json()),
-      fetch(`${BACKEND_URL}/notes/`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: { 
-        'Content-Type': 'application/json'
-      }
-      }).then(response => response.json())
-    ])
-    .then(([linksData, notesData]) => {
-      sendResponse({ success: true, links: linksData, notes: notesData });
-    })
-    .catch(error => {
-      sendResponse({ success: false, error: error.message });
-    });
+    }
+    
+    fetchAllData();
     return true;
   }
 

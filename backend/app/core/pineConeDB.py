@@ -11,6 +11,7 @@ index_name = settings.PINECONE_INDEX
 GEMINI_API_KEY = settings.GEMINI_API_KEY
 pc = Pinecone(api_key=settings.PINECONE_API_KEY)
 
+
 # BM25_ENCODER_FILE = r"bm25_encoder.pkl"
 
 # def get_bm25_encoder():

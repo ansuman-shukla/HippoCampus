@@ -57,6 +57,24 @@ export const makeAuthenticatedRequest = async (
   try {
     const response = await fetch(url, defaultOptions);
     
+    // Check for session expiration errors
+    if (response.status === 401) {
+      try {
+        const errorData = await response.clone().json();
+        if (errorData.error_type === 'session_expired') {
+          console.log('Session expired, triggering re-authentication...');
+          // Clear any local auth state
+          localStorage.removeItem('user_name');
+          // Trigger re-authentication by redirecting to auth
+          window.location.href = '/auth';
+          throw new Error('Session expired. Please log in again.');
+        }
+      } catch (jsonError) {
+        // If we can't parse the error, treat as generic auth error
+        console.log('Authentication failed, may need to re-login');
+      }
+    }
+    
     // Backend automatically handles token refresh via middleware
     // No need for frontend token refresh logic
     
