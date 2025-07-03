@@ -145,8 +145,27 @@ const AnimatedRoutes = () => {
             await checkAuthStatus();
             Navigate("/submit");
           } else if (!cookie && !accessToken) {
-            // No authentication found, continue checking with shorter interval
-            setTimeout(() => checkForExternalAuth(), 500);
+            // Check for refresh token before giving up
+            chrome.cookies.get({
+              url: import.meta.env.VITE_BACKEND_URL,
+              name: 'refresh_token',
+            }, async (refreshCookie) => {
+              if (refreshCookie) {
+                console.log('Found refresh token, attempting to restore session');
+                try {
+                  const authResult = await checkAuthStatus();
+                  if (authResult && location.pathname === "/") {
+                    Navigate("/submit");
+                  }
+                } catch (error) {
+                  console.log('Failed to restore session with refresh token:', error);
+                }
+              }
+              // Continue checking with shorter interval only if no refresh token
+              if (!refreshCookie) {
+                setTimeout(() => checkForExternalAuth(), 1000);
+              }
+            });
           }
         });
       }
@@ -220,7 +239,10 @@ const AnimatedRoutes = () => {
   };
   
   useEffect(() => {
-    checkForExternalAuth();
+    // Small delay to let extension fully initialize before auth checks
+    const timeoutId = setTimeout(() => {
+      checkForExternalAuth();
+    }, 100);
     
     // Listen for auth state changes from background script
     const messageListener = (message: any) => {
@@ -233,6 +255,7 @@ const AnimatedRoutes = () => {
     chrome.runtime.onMessage.addListener(messageListener);
     
     return () => {
+      clearTimeout(timeoutId);
       chrome.runtime.onMessage.removeListener(messageListener);
     };
   }, []);

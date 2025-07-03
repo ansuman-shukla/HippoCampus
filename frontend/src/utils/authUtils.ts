@@ -45,6 +45,12 @@ export const makeAuthenticatedRequest = async (
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
   
+  console.log(`🔐 AUTH REQUEST: Starting authenticated request`);
+  console.log(`   ├─ Endpoint: ${endpoint}`);
+  console.log(`   ├─ Full URL: ${url}`);
+  console.log(`   ├─ Method: ${options.method || 'GET'}`);
+  console.log(`   └─ Extension env: ${isExtension()}`);
+  
   const defaultOptions: RequestInit = {
     credentials: 'include', // Always use cookies - backend handles auth
     headers: {
@@ -54,33 +60,60 @@ export const makeAuthenticatedRequest = async (
     ...options,
   };
 
+  console.log(`🔧 AUTH REQUEST: Request configuration`);
+  console.log(`   ├─ Credentials: ${defaultOptions.credentials}`);
+  console.log(`   ├─ Headers: ${JSON.stringify(defaultOptions.headers)}`);
+  console.log(`   └─ Body present: ${!!defaultOptions.body}`);
+
   try {
+    console.log(`📡 AUTH REQUEST: Sending authenticated request`);
+    const startTime = performance.now();
+    
     const response = await fetch(url, defaultOptions);
+    
+    const endTime = performance.now();
+    const duration = Math.round(endTime - startTime);
+    
+    console.log(`📨 AUTH REQUEST: Response received`);
+    console.log(`   ├─ Status: ${response.status} ${response.statusText}`);
+    console.log(`   ├─ Response time: ${duration}ms`);
+    console.log(`   └─ Content-Type: ${response.headers.get('content-type') || 'Unknown'}`);
     
     // Check for session expiration errors
     if (response.status === 401) {
+      console.warn(`🚫 AUTH REQUEST: Unauthorized response (401)`);
       try {
         const errorData = await response.clone().json();
+        console.warn(`   ├─ Error type: ${errorData.error_type || 'Unknown'}`);
+        console.warn(`   └─ Error detail: ${errorData.detail || 'Unknown'}`);
+        
         if (errorData.error_type === 'session_expired') {
-          console.log('Session expired, triggering re-authentication...');
+          console.log('⚠️  AUTH REQUEST: Session expired, triggering re-authentication...');
+          console.log(`   ├─ Clearing local storage`);
           // Clear any local auth state
           localStorage.removeItem('user_name');
+          console.log(`   └─ Redirecting to auth page`);
           // Trigger re-authentication by redirecting to auth
           window.location.href = '/auth';
           throw new Error('Session expired. Please log in again.');
         }
       } catch (jsonError) {
         // If we can't parse the error, treat as generic auth error
-        console.log('Authentication failed, may need to re-login');
+        console.log('⚠️  AUTH REQUEST: Authentication failed, may need to re-login');
+        console.log(`   └─ JSON parse error: ${jsonError}`);
       }
     }
     
     // Backend automatically handles token refresh via middleware
     // No need for frontend token refresh logic
+    console.log(`✅ AUTH REQUEST: Request completed successfully`);
     
     return response;
-  } catch (error) {
-    console.error('API request failed:', error);
+  } catch (error: any) {
+    console.error('💥 AUTH REQUEST: Request failed');
+    console.error(`   ├─ Error type: ${error.constructor.name}`);
+    console.error(`   ├─ Error message: ${error.message}`);
+    console.error(`   └─ Full error:`, error);
     throw error;
   }
 };
@@ -89,7 +122,13 @@ export const makeAuthenticatedRequest = async (
  * Login with Supabase - Backend will set httpOnly cookies automatically
  */
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
+  console.log(`🔐 LOGIN: Starting login process`);
+  console.log(`   ├─ Email: ${email}`);
+  console.log(`   ├─ Password length: ${password.length} characters`);
+  console.log(`   └─ Environment: ${isExtension() ? 'Extension' : 'Web'}`);
+  
   try {
+    console.log(`📡 LOGIN: Authenticating with Supabase`);
     // First authenticate with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -97,18 +136,35 @@ export const login = async (email: string, password: string): Promise<AuthRespon
     });
 
     if (error) {
+      console.error(`❌ LOGIN: Supabase authentication failed`);
+      console.error(`   ├─ Error message: ${error.message}`);
+      console.error(`   └─ Error details:`, error);
       return {
         success: false,
         error: error.message,
       };
     }
 
+    console.log(`✅ LOGIN: Supabase authentication successful`);
+    console.log(`   ├─ Session received: ${!!data.session}`);
+    console.log(`   ├─ Access token present: ${!!data.session?.access_token}`);
+    console.log(`   ├─ Refresh token present: ${!!data.session?.refresh_token}`);
+    console.log(`   ├─ User ID: ${data.user?.id || 'Unknown'}`);
+    console.log(`   ├─ User email: ${data.user?.email || 'Unknown'}`);
+    console.log(`   └─ Token expires: ${data.session?.expires_at || 'Unknown'}`);
+
     if (!data.session?.access_token) {
+      console.error(`❌ LOGIN: No access token in Supabase response`);
       return {
         success: false,
         error: 'No session received from Supabase',
       };
     }
+
+    console.log(`🔄 LOGIN: Sending tokens to backend for cookie setup`);
+    console.log(`   ├─ Backend URL: ${getApiBaseUrl()}`);
+    console.log(`   ├─ Access token length: ${data.session.access_token.length}`);
+    console.log(`   └─ Refresh token length: ${data.session.refresh_token?.length || 0}`);
 
     // Send tokens to backend for cookie setup
     const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
@@ -123,8 +179,18 @@ export const login = async (email: string, password: string): Promise<AuthRespon
       }),
     });
 
+    console.log(`📨 LOGIN: Backend login response received`);
+    console.log(`   ├─ Status: ${response.status} ${response.statusText}`);
+    console.log(`   ├─ Headers: ${JSON.stringify(Array.from(response.headers.entries()))}`);
+    console.log(`   └─ Response OK: ${response.ok}`);
+
     if (!response.ok) {
+      console.error(`❌ LOGIN: Backend authentication failed`);
+      console.error(`   └─ Status: ${response.status}`);
+      
       const errorData = await response.json().catch(() => ({}));
+      console.error(`   └─ Error data:`, errorData);
+      
       return {
         success: false,
         error: errorData.detail || 'Backend authentication failed',
@@ -132,9 +198,13 @@ export const login = async (email: string, password: string): Promise<AuthRespon
     }
 
     const result = await response.json();
+    console.log(`✅ LOGIN: Backend authentication successful`);
+    console.log(`   ├─ Response keys: ${Object.keys(result)}`);
+    console.log(`   └─ Message: ${result.message || 'No message'}`);
     
     // Store user info in localStorage as backup for extensions
     if (result.user) {
+      console.log(`💾 LOGIN: Storing user info in localStorage`);
       try {
         localStorage.setItem('user_id', result.user.id || '');
         if (result.user.full_name) {
@@ -143,18 +213,26 @@ export const login = async (email: string, password: string): Promise<AuthRespon
         if (result.user.picture) {
           localStorage.setItem('user_picture', result.user.picture);
         }
+        console.log(`   ├─ Stored user_id: ${result.user.id || 'Empty'}`);
+        console.log(`   ├─ Stored user_name: ${result.user.full_name || 'Empty'}`);
+        console.log(`   └─ Stored user_picture: ${!!result.user.picture}`);
       } catch (error) {
-        console.warn('Failed to store user info in localStorage:', error);
+        console.warn('⚠️  LOGIN: Failed to store user info in localStorage:', error);
       }
+    } else {
+      console.log(`ℹ️  LOGIN: No user info in backend response to store`);
     }
     
+    console.log(`🎉 LOGIN: Login process completed successfully`);
     return {
       success: true,
       user: result.user,
       message: 'Login successful',
     };
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (error: any) {
+    console.error('💥 LOGIN: Unexpected error during login:', error);
+    console.error(`   ├─ Error type: ${error.constructor.name}`);
+    console.error(`   └─ Error message: ${error.message}`);
     return {
       success: false,
       error: 'An unexpected error occurred during login',
