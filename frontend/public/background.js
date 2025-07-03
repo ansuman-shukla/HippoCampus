@@ -70,25 +70,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 
   else if (message.action === "search") {
+    const requestBody = {
+      query: message.query
+    };
+
+    if (message.type !== "All") {
+      requestBody.filter = { type: { $eq: message.type } };
+    }
+
     const fetchOptions = {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify(requestBody)
     };
 
-    if (message.type !== "All") {
-      fetchOptions.body = JSON.stringify({ type: { $eq: message.type } });
-    }
-
-    fetch(`${BACKEND_URL}/links/search?query=${message.query}`, fetchOptions)
-      .then(response => response.json())
+    fetch(`${BACKEND_URL}/links/search`, fetchOptions)
+      .then(response => {
+        if (!response.ok) {
+          // Handle HTTP error responses
+          return response.json().then(errorData => {
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+          });
+        }
+        return response.json();
+      })
       .then(data => {
         console.log("The response is:", data);
         sendResponse({ success: true, data });
       })
-      .catch(error => sendResponse({ success: false, error: error.message }));
+      .catch(error => {
+        console.error("Search error:", error);
+        sendResponse({ success: false, error: error.message });
+      });
 
     return true;
   }

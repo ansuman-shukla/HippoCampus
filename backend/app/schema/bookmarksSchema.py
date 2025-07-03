@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class Memory_Schema(BaseModel):
     title: str
@@ -8,6 +9,7 @@ class Memory_Schema(BaseModel):
     site_name: str
     date: str
     source_url: str
-    type: str 
+    type: str
+    space: Optional[str] = None 
 
 

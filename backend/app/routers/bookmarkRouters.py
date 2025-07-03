@@ -3,10 +3,11 @@ from fastapi import APIRouter , HTTPException , Request
 from app.exceptions.httpExceptionsSearch import *
 from app.exceptions.httpExceptionsSave import *
 from app.schema.link_schema import Link as link_schema
-from typing import List
+from typing import List, Optional, Dict
 from langchain_core.documents import Document
 from app.services.pinecone_service import *
 from app.services.memories_service import *
+from pydantic import BaseModel
 
 # https://hippocampus-backend.onrender.com/links/save for saving links
 # https://hippocampus-backend.onrender.com/links/search for searching links
@@ -15,6 +16,10 @@ router = APIRouter(
     prefix="/links",
     tags=["Links"]
 )
+
+class SearchRequest(BaseModel):
+    query: str
+    filter: Optional[Dict] = None
 
 @router.post("/save")
 async def save_link(
@@ -48,9 +53,8 @@ async def save_link(
 
 @router.post("/search")
 async def search_links(
-    query: str,
+    search_request: SearchRequest,
     request: Request,
-    filter: dict = None,
 ):
     """API endpoint for document search"""
 
@@ -61,7 +65,7 @@ async def search_links(
 
     try:
         logger.info(f"Attempting to search document for user {user_id}")
-        result = await search_vector_db(query=query, namespace=user_id, filter=filter)
+        result = await search_vector_db(query=search_request.query, namespace=user_id, filter=search_request.filter)
         logger.info(f"Successfully searched document for user {user_id}")
         return result
     except InvalidRequestError as e:

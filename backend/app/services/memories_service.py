@@ -5,13 +5,13 @@ from bson.errors import InvalidId
 from bson import ObjectId
 from app.models.bookmarkModels import *
 from pymongo.errors import PyMongoError
-from app.schema.bookmarksSchema import Memory_Schema
+# Removed Memory_Schema import since we're using dict instead
 from app.exceptions.databaseExceptions import *
 from app.exceptions.global_exceptions import DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
 
-async def save_memory_to_db(memory_data: Memory_Schema):
+async def save_memory_to_db(memory_data: dict):
     """
     Save memory data to database with enhanced error handling
     """

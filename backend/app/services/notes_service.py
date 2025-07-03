@@ -7,6 +7,7 @@ from app.exceptions.httpExceptionsSearch import *
 from app.exceptions.global_exceptions import ExternalServiceError, DatabaseConnectionError
 from langchain_core.documents import Document
 from app.models.notesModel import *
+from app.utils.space_extractor import extract_space_from_text, remove_space_pattern_from_text
 from app.services.pinecone_service import *
 
 async def get_all_notes_from_db(user_id: str):
@@ -40,17 +41,23 @@ async def create_note(note: dict, namespace: str):
     doc_id = f"{namespace}-{timestamp}"
 
     try:
-
-        text_to_embed = f"{note.title}, {note.note}"
+        # Extract space from note field
+        space = extract_space_from_text(note.note) or "general"
+        
+        # Clean the note text for embedding (remove space pattern)
+        clean_note = remove_space_pattern_from_text(note.note) if note.note else note.note
+        text_to_embed = f"{note.title}, {clean_note}"
         print(f"Embedding text: {text_to_embed}")
-        # Simulate embedding process
+        
+        # Prepare metadata with space information
         metadata = {
             "doc_id": doc_id,
             "user_id": namespace,
             "title": note.title,
-            "note": note.note,
+            "note": note.note,  # Keep original note with space pattern
             "type": "Note",
             "date": datetime.now().isoformat(),
+            "space": space,  # Add extracted space
         }
 
         # Generate embeddings using safe wrapper

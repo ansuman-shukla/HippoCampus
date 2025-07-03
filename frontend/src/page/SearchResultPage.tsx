@@ -19,6 +19,7 @@ const SearchResponse: React.FC = () => {
   const responseData = location.state?.data || [];
   const query = location.state?.Query || "";
   const isSearchAll = location.state?.isSearchAll || false;
+  const errorMessage = location.state?.error || null;
   const linksArray = location.state?.linksArray || [];
   const notesArray = location.state?.notesArray || [];
 
@@ -278,7 +279,21 @@ const SearchResponse: React.FC = () => {
 
       className={`relative max-w-md  rounded-lg w-[420px] h-[500px] flex flex-col justify-center border border-black py-0 overflow-hidden`}>
       {Card.length === 0 ? (
-        <p className='text-center text-2xl black mb-3 pb-7 nyr-semibold'>Oops ! No items found</p>
+        <div className='text-center px-6'>
+          <p className='text-2xl black mb-3 pb-7 nyr-semibold'>
+            {errorMessage ? 'Search Error' : 'Oops ! No items found'}
+          </p>
+          {errorMessage && (
+            <p className='text-lg text-gray-700 mb-4 nyr'>
+              {errorMessage}
+            </p>
+          )}
+          {query && !errorMessage && (
+            <p className='text-sm text-gray-600 nyr'>
+              No results found for "{query}"
+            </p>
+          )}
+        </div>
       ) : (<>
       
         {isSearchAll && selectedIndex === null && 

@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import ColorChangingSpinner from "../components/Loader";
 import { GoBookmark } from "react-icons/go";
 import { MdEditNote } from "react-icons/md";
+import { removeSpacePattern } from "../utils/spaceUtils";
 
 
 interface Props {
@@ -41,32 +42,36 @@ export default function SearchPage({ Quote }: Props) {
         setIsLoading(true);
         chrome.runtime.sendMessage({ action: "search", query: query, type: activeTab },
             (response) => {
-                if (response) {
+                setIsLoading(false);
+                
+                if (response && response.success) {
                     if (response.data?.detail === "Search failed: No documents found matching query") {
                         Navigate("/response", { state: { data: [] } });
                         return;
-                        setIsLoading(false);
                     } else {
                         console.log("The response is:", response.data);
                         const responseArray = response.data.map((item: any) => ({
                             title: item.metadata.title,
                             url: item.metadata.source_url,
-                            content: item.metadata.note,
+                            content: removeSpacePattern(item.metadata.note),
                             date: item.metadata.date,
                             ID: item.metadata.doc_id,
                             type: item.metadata.type
                         }));
                         Navigate("/response", { state: { data: responseArray, Query: query } });
                     }
-
-
                 } else {
-                    setIsLoading(false);
-                    console.error("API Error:", response.error);
+                    console.error("Search error:", response?.error);
+                    const errorMessage = response?.error || "Search failed";
+                    
+                    if (errorMessage.includes("No documents found matching query")) {
+                        Navigate("/response", { state: { data: [], Query: query } });
+                    } else {
+                        Navigate("/response", { state: { data: [], Query: query, error: errorMessage } });
+                    }
                 }
             }
         )
-
     };
     const handleSearchAll = () => {
         setIsLoading(true);
@@ -83,14 +88,14 @@ export default function SearchPage({ Quote }: Props) {
                         const linksArray = response.links.map((item: any) => ({
                             title: item.title,
                             url: item.source_url,
-                            content: item.note,
+                            content: removeSpacePattern(item.note),
                             date: item.date,
                             ID: item.doc_id,
                             type: item.type
                         }));
                         const notesArray = response.notes.map((item: any) => ({
                             title: item.title,
-                            content: item.note,
+                            content: removeSpacePattern(item.note),
                             date: item.date,
                             ID: item.doc_id,
                             type: item.type
