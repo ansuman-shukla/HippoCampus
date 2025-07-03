@@ -151,9 +151,16 @@ export default function InputForm({
       ) : null}
 
       <div className={`flex ${showOnlyOne ? 'justify-center' : 'justify-between'} mx-auto ${Error ? "pt-0" : "pt-1"}`}>
-        <Button handle={handleClear} text={leftBtnTxt} textColor={BtnTxtClr} iSdisabled={isLoading ?? false} />
-        {isLoading ? <LoaderPillars /> : null}
-        {showOnlyOne ? null : <Button handle={handleSubmit} text={rightBtnTxt} textColor={BtnTxtClr} IncMinWidth="129px" iSdisabled={isLoading ?? false} />}
+        {isLoading ? (
+          <div className="flex justify-center w-full">
+            <LoaderPillars />
+          </div>
+        ) : (
+          <>
+            <Button handle={handleClear} text={leftBtnTxt} textColor={BtnTxtClr} iSdisabled={false} />
+            {showOnlyOne ? null : <Button handle={handleSubmit} text={rightBtnTxt} textColor={BtnTxtClr} IncMinWidth="129px" iSdisabled={false} />}
+          </>
+        )}
       </div>
     </form>
   );

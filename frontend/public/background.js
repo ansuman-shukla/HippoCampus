@@ -1,5 +1,5 @@
 // Configuration - will be replaced during build
-const BACKEND_URL = 'http://127.0.0.1:8000';
+const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
 const API_URL = '__VITE_API_URL__';
 
 chrome.action.onClicked.addListener((tab) => {
