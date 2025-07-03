@@ -134,7 +134,7 @@ export default function SearchPage({ Quote }: Props) {
                                 <input
                                     ref={inputRef}
                                     type="text"
-                                    placeholder={`SEARCH FOR ${activeTab==="All" ? "BOOMARKS AND NOTES" : activeTab.toLocaleUpperCase()}`}
+                                    placeholder={`SEARCH ${activeTab==="All" ? "BOOKMARKS & NOTES" : activeTab.toLocaleUpperCase()} - PRESS ENTER`}
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     onKeyDown={(e) => {
