@@ -2,6 +2,20 @@
 const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
 const API_URL = '__VITE_API_URL__';
 
+// Helper function to notify frontend about potential authentication changes
+function notifyAuthStateChange() {
+  console.log('Notifying frontend about potential auth state change');
+  chrome.tabs.query({}, (tabs) => {
+    tabs.forEach(tab => {
+      if (tab.url && tab.url.includes('chrome-extension://')) {
+        chrome.tabs.sendMessage(tab.id, { action: "authStateChanged" }).catch(() => {
+          // Ignore errors if extension popup is not active
+        });
+      }
+    });
+  });
+}
+
 chrome.action.onClicked.addListener((tab) => {
   chrome.scripting.insertCSS({
     target: { tabId: tab.id },
@@ -52,9 +66,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           throw new Error(`Notes fetch failed: ${notesResponse.status}`);
         }
         
-        const notesData = await notesResponse.json();
+                const notesData = await notesResponse.json();
         
-      sendResponse({ success: true, links: linksData, notes: notesData });
+        // Notify frontend that API calls completed (might have refreshed tokens)
+        notifyAuthStateChange();
+        sendResponse({ success: true, links: linksData, notes: notesData });
       } catch (error) {
         console.error('SearchAll error:', error);
       sendResponse({ success: false, error: error.message });
@@ -99,6 +115,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .then(data => {
         console.log("The response is:", data);
+        // Notify frontend that an API call completed (might have refreshed tokens)
+        notifyAuthStateChange();
         sendResponse({ success: true, data });
       })
       .catch(error => {
@@ -127,6 +145,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .then(data => {
         console.log("Submit success:", data);
+        // Notify frontend that an API call completed (might have refreshed tokens)
+        notifyAuthStateChange();
         sendResponse({ success: true, data });
       })
       .catch(error => {
@@ -153,6 +173,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .then(data => {
         console.log("SaveNotes success:", data);
+        // Notify frontend that an API call completed (might have refreshed tokens)
+        notifyAuthStateChange();
         sendResponse({ success: true, data });
       })
       .catch(error => {
@@ -168,7 +190,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       credentials: 'include'
     })
       .then(response => response.json())
-      .then(data => sendResponse({ success: true, data }))
+      .then(data => {
+        // Notify frontend that an API call completed (might have refreshed tokens)
+        notifyAuthStateChange();
+        sendResponse({ success: true, data });
+      })
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
@@ -178,7 +204,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       credentials: 'include'
     })
       .then(response => response.json())
-      .then(data => sendResponse({ success: true, data }))
+      .then(data => {
+        // Notify frontend that an API call completed (might have refreshed tokens)
+        notifyAuthStateChange();
+        sendResponse({ success: true, data });
+      })
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
@@ -188,7 +218,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       credentials: 'include'
     })
       .then(response => response.json())
-      .then(data => sendResponse({ success: true, data }))
+      .then(data => {
+        // Notify frontend that an API call completed (might have refreshed tokens)
+        notifyAuthStateChange();
+        sendResponse({ success: true, data });
+      })
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
@@ -200,7 +234,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       body: JSON.stringify({ content: message.content })
     })
       .then(response => response.json())
-      .then(data => sendResponse({ success: true, data }))
+      .then(data => {
+        // Notify frontend that an API call completed (might have refreshed tokens)
+        notifyAuthStateChange();
+        sendResponse({ success: true, data });
+      })
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
@@ -226,14 +264,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 });
 
-// Monitor cookie changes for authentication
+// Monitor cookie changes for authentication on both auth and backend domains
 chrome.cookies.onChanged.addListener((changeInfo) => {
-  if (changeInfo.cookie.domain === new URL(API_URL).hostname + '/' && 
-      (changeInfo.cookie.name === 'access_token' || changeInfo.cookie.name === 'refresh_token') &&
-      !changeInfo.removed) {
-    console.log('Auth cookie detected, triggering auth check');
+  const authDomain = API_URL !== '__VITE_API_URL__' ? new URL(API_URL).hostname : null;
+  const backendDomain = new URL(BACKEND_URL).hostname;
+  const cookieDomain = changeInfo.cookie.domain;
+  const cookieName = changeInfo.cookie.name;
+  
+  // Check if this is an auth-related cookie on either domain
+  const isAuthCookie = (cookieName === 'access_token' || cookieName === 'refresh_token');
+  const isAuthDomain = (authDomain && cookieDomain === authDomain + '/') || cookieDomain === authDomain;
+  const isBackendDomain = cookieDomain === backendDomain;
+  
+  if (isAuthCookie && (isAuthDomain || isBackendDomain) && !changeInfo.removed) {
+    const source = isAuthDomain ? 'auth page' : 'backend';
+    console.log(`🍪 Auth cookie detected from ${source}: ${cookieName}`);
+    console.log(`   Domain: ${cookieDomain}`);
     
-    // Notify extension about potential auth completion
+    // Notify extension about potential auth completion or token refresh
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach(tab => {
         if (tab.url && tab.url.includes('chrome-extension://')) {
