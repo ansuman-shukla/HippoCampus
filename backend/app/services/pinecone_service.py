@@ -16,7 +16,7 @@ from app.exceptions.global_exceptions import ExternalServiceError
 logger = logging.getLogger(__name__)
 
 async def save_to_vector_db(obj: LinkSchema, namespace: str):
-    """Save document to vector database using E5 embeddings"""
+    """Save document to vector database using E5 embeddings with metadata filtering instead of namespaces"""
 
     # Convert timestamp to integer for cleaner ID
     timestamp = datetime.now().strftime("%Y-%d-%m#%H-%M-%S")
@@ -42,13 +42,14 @@ async def save_to_vector_db(obj: LinkSchema, namespace: str):
         metadata = {
             "doc_id": doc_id,
             "user_id": namespace,
+            "namespace": namespace,  # Add namespace to metadata for filtering
             "title": obj.title,
             "note": obj.note,  # Keep original note with space pattern
             "source_url": obj.link,
             "site_name": site_name,
             "type": "Bookmark",
             "date": datetime.now().isoformat(),
-            "space": space,  # Add extracted space
+            "space": space, #catagory that memory belongs to 
         }
 
         # Generate E5 embeddings using safe wrapper
@@ -65,10 +66,10 @@ async def save_to_vector_db(obj: LinkSchema, namespace: str):
             "metadata": metadata
         }
 
-        # Upsert using safe wrapper
+        # Upsert using safe wrapper - store in default namespace
         await safe_index.upsert(
-            vectors=[vector],
-            namespace=namespace
+            vectors=[vector]
+            # No namespace parameter = default namespace
         )
 
         # Save to database
@@ -100,7 +101,7 @@ async def search_vector_db(
     filter: Optional[Dict] = None,
     top_k: int = 10
 ) -> List[Document]:
-    """Search using E5 embeddings with space filtering support"""
+    """Search using E5 embeddings with metadata filtering for user isolation"""
 
     if not namespace:
         raise InvalidRequestError("Missing user uuid - please login")
@@ -113,20 +114,23 @@ async def search_vector_db(
         query_space = extract_space_from_text(query)
         clean_query = remove_space_pattern_from_text(query)
         
+        # Create user filter using metadata
+        user_filter = {"namespace": {"$eq": namespace}}
+        
         # If space was extracted from query, add it to filter using proper Pinecone syntax
         if query_space:
-            if filter is None:
-                filter = {}
-            # Combine space filter with existing filters using Pinecone $eq syntax
             space_filter = {"space": {"$eq": query_space}}
-            if "$and" in filter:
-                filter["$and"].append(space_filter)
+            # Combine user filter, space filter and existing filters
+            filters_to_combine = [user_filter, space_filter]
+            if filter:
+                filters_to_combine.append(filter)
+            filter = {"$and": filters_to_combine}
+        else:
+            # Just combine user filter with existing filter if present
+            if filter:
+                filter = {"$and": [user_filter, filter]}
             else:
-                existing_filters = [filter] if filter else []
-                if existing_filters:
-                    filter = {"$and": existing_filters + [space_filter]}
-                else:
-                    filter = space_filter
+                filter = user_filter
         
         # Generate query embedding using clean query (without space pattern)
         embedding = await safe_pc.embed(
@@ -135,13 +139,13 @@ async def search_vector_db(
             parameters={"input_type": "query", "truncate": "END"}
         )
 
-        # Perform vector search using safe wrapper
+        # Perform vector search using safe wrapper - search in default namespace with metadata filter
         results = await safe_index.query(
-            namespace=namespace,
             vector=embedding[0]['values'],
             top_k=top_k,
             include_metadata=True,
             filter=filter
+            # No namespace parameter = search in default namespace
         )
 
         # Convert to Langchain documents format
@@ -191,7 +195,7 @@ async def search_vector_db(
 
 async def delete_from_vector_db(doc_id: str, namespace: str):
     """
-    Delete document from vector database with enhanced error handling and comprehensive logging
+    Delete document from vector database using metadata filtering instead of namespace isolation
     """
     logger.info(f"=== VECTOR DB DELETE STARTED ===")
     logger.info(f"delete_from_vector_db called with doc_id: '{doc_id}', namespace: '{namespace}'")
@@ -217,12 +221,20 @@ async def delete_from_vector_db(doc_id: str, namespace: str):
             logger.error(f"Vector DB connection test failed: {str(conn_e)}")
             raise VectorDBConnectionError(f"Failed to connect to vector database: {str(conn_e)}")
         
-        # Perform the delete operation
-        logger.info(f"Attempting to delete vector with id: '{doc_id}' from namespace: '{namespace}'")
+        # Create metadata filter to ensure we only delete documents belonging to this user
+        delete_filter = {
+            "$and": [
+                {"namespace": {"$eq": namespace}},
+                {"doc_id": {"$eq": doc_id}}
+            ]
+        }
+        
+        # Perform the delete operation using metadata filter instead of namespace
+        logger.info(f"Attempting to delete vector with id: '{doc_id}' for user: '{namespace}' using metadata filter")
         
         delete_result = await safe_index.delete(
-            ids=[doc_id],
-            namespace=namespace
+            filter=delete_filter
+            # No namespace parameter = delete from default namespace using filter
         )
         
         logger.info(f"Vector database delete operation completed. Result: {delete_result}")

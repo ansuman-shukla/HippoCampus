@@ -1,5 +1,6 @@
 // Configuration - will be replaced during build
-const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
+// const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
+const BACKEND_URL = 'http://127.0.0.1:8000';
 const API_URL = '__VITE_API_URL__';
 
 // Helper function to notify frontend about potential authentication changes
@@ -244,16 +245,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   else if (message.action === "authCompleted") {
-    // Notify all extension windows that auth has completed
-    chrome.tabs.query({}, (tabs) => {
-      tabs.forEach(tab => {
-        if (tab.url && tab.url.includes('chrome-extension://')) {
-          chrome.tabs.sendMessage(tab.id, { action: "authStateChanged" }).catch(() => {
-            // Ignore errors if extension popup is not active
-          });
-        }
+    console.log('🔐 Auth completed, closing extension to refresh state');
+    
+    // Close extension popup/windows after a brief delay to ensure state is updated
+    setTimeout(() => {
+      // Find and close extension windows/tabs
+      chrome.tabs.query({}, (tabs) => {
+        tabs.forEach(tab => {
+          if (tab.url && tab.url.includes('chrome-extension://')) {
+            console.log('Closing extension tab:', tab.id);
+            chrome.tabs.remove(tab.id);
+          }
+        });
       });
-    });
+      
+      // Also try to close extension windows
+      chrome.windows.getAll({}, (windows) => {
+        windows.forEach(window => {
+          if (window.type === 'popup') {
+            chrome.tabs.query({windowId: window.id}, (windowTabs) => {
+              if (windowTabs.some(tab => tab.url && tab.url.includes('chrome-extension://'))) {
+                console.log('Closing extension window:', window.id);
+                chrome.windows.remove(window.id);
+              }
+            });
+          }
+        });
+      });
+    }, 500);
+    
     sendResponse({ success: true });
     return true;
   }

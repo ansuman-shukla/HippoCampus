@@ -34,7 +34,7 @@ async def get_all_notes_from_db(user_id: str):
 
 async def create_note(note: dict, namespace: str):
     """
-    Create a new note for a user.
+    Create a new note for a user using default namespace with metadata filtering.
     """
     # Placeholder for actual implementation
     timestamp = datetime.now().strftime("%Y-%d-%m#%H-%M-%S")
@@ -49,10 +49,11 @@ async def create_note(note: dict, namespace: str):
         text_to_embed = f"{note.title}, {clean_note}"
         print(f"Embedding text: {text_to_embed}")
         
-        # Prepare metadata with space information
+        # Prepare metadata with space information and namespace for filtering
         metadata = {
             "doc_id": doc_id,
             "user_id": namespace,
+            "namespace": namespace,  # Add namespace to metadata for filtering
             "title": note.title,
             "note": note.note,  # Keep original note with space pattern
             "type": "Note",
@@ -73,10 +74,10 @@ async def create_note(note: dict, namespace: str):
             "metadata": metadata
         }
 
-        # Upsert using safe wrapper
+        # Upsert using safe wrapper - store in default namespace
         await safe_index.upsert(
-            vectors=[vector],
-            namespace=namespace
+            vectors=[vector]
+            # No namespace parameter = default namespace
         )
 
         await save_note_to_db(metadata)
@@ -125,10 +126,50 @@ async def update_note(note_id: str, note: dict, user_id: str):
 
 async def delete_note(doc_id: str, namespace: str):
     """
-    Delete an existing note for a user.
+    Delete an existing note for a user using metadata filtering.
     """
-    # Placeholder for actual implementation
-    return await delete_from_vector_db(doc_id, namespace)
+    try:
+        # Delete from vector database using metadata filtering
+        vector_result = await delete_from_vector_db(doc_id, namespace)
+        
+        # Delete from regular database  
+        db_result = await delete_note_from_db(doc_id)
+        
+        return {
+            "status": "success",
+            "message": "Note deleted successfully",
+            "doc_id": doc_id,
+            "vector_result": vector_result,
+            "db_result": db_result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting note: {str(e)}", exc_info=True)
+        raise DocumentStorageError(
+            message="Failed to delete note",
+            user_id=namespace,
+            doc_id=doc_id
+        ) from e
+
+# Add the missing delete_note_from_db function
+async def delete_note_from_db(doc_id: str):
+    """
+    Delete note from database by doc_id.
+    """
+    try:
+        result = await safe_collection_notes.delete_one({"doc_id": doc_id})
+        if result.deleted_count == 0:
+            logger.warning(f"No note found with doc_id: {doc_id}")
+            return {"status": "not_found", "doc_id": doc_id}
+        
+        return {"status": "deleted", "doc_id": doc_id, "deleted_count": result.deleted_count}
+        
+    except DatabaseConnectionError as e:
+        logger.error(f"Database connection error: {str(e)}")
+        raise DatabaseError(f"Database connection failed: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error deleting note from database: {str(e)}", exc_info=True)
+        raise DatabaseError(f"Error deleting note: {str(e)}")
 
 # ======Mongo DB Functions========
 
