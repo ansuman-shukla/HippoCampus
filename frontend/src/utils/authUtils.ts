@@ -36,6 +36,76 @@ const getApiBaseUrl = (): string => {
 };
 
 /**
+ * Clear all authentication data from local storage and cookies (comprehensive cleanup)
+ */
+const clearAllAuthData = async (): Promise<void> => {
+  console.log('🧹 AUTH CLEANUP: Starting comprehensive auth data cleanup');
+  
+  // Clear localStorage items
+  const authLocalStorageKeys = [
+    'access_token',
+    'refresh_token', 
+    'user_id',
+    'user_name',
+    'user_picture',
+    'session',
+    'quotes'
+  ];
+  
+  console.log('   ├─ Clearing localStorage items...');
+  authLocalStorageKeys.forEach(key => {
+    try {
+      localStorage.removeItem(key);
+      console.log(`   │  ✓ Cleared: ${key}`);
+    } catch (error) {
+      console.warn(`   │  ⚠️  Failed to clear ${key}:`, error);
+    }
+  });
+  
+  // Clear extension cookies if in extension environment
+  if (isExtension() && typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
+    console.log('   ├─ Clearing extension cookies...');
+    try {
+      const domains = [
+        import.meta.env.VITE_BACKEND_URL,
+        'https://extension-auth.vercel.app',
+        'https://hippocampus-puxn.onrender.com',
+        'http://127.0.0.1:8000'
+      ];
+      
+      const cookieNames = ['access_token', 'refresh_token', 'user_id', 'user_name', 'user_picture'];
+      
+      for (const domain of domains) {
+        for (const cookieName of cookieNames) {
+          try {
+            await window.chrome.cookies.remove({
+              url: domain,
+              name: cookieName
+            });
+            console.log(`   │  ✓ Cleared ${cookieName} from ${domain}`);
+          } catch (error) {
+            console.warn(`   │  ⚠️  Failed to clear ${cookieName} from ${domain}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('   │  ⚠️  Extension cookie clearing failed:', error);
+    }
+  }
+  
+  // Sign out from Supabase as well
+  try {
+    console.log('   ├─ Signing out from Supabase...');
+    await supabase.auth.signOut();
+    console.log('   │  ✓ Supabase signout completed');
+  } catch (error) {
+    console.warn('   │  ⚠️  Supabase signout failed:', error);
+  }
+  
+  console.log('✅ AUTH CLEANUP: Comprehensive cleanup completed');
+};
+
+/**
  * Make authenticated API requests - cookies are handled automatically by the browser
  */
 export const makeAuthenticatedRequest = async (
@@ -87,20 +157,35 @@ export const makeAuthenticatedRequest = async (
         console.warn(`   ├─ Error type: ${errorData.error_type || 'Unknown'}`);
         console.warn(`   └─ Error detail: ${errorData.detail || 'Unknown'}`);
         
-        if (errorData.error_type === 'session_expired') {
-          console.log('⚠️  AUTH REQUEST: Session expired, triggering re-authentication...');
-          console.log(`   ├─ Clearing local storage`);
-          // Clear any local auth state
-          localStorage.removeItem('user_name');
+        // Enhanced session expiration detection
+        const isSessionExpired = (
+          errorData.error_type === 'session_expired' ||
+          errorData.error_type === 'auth_error' ||
+          (errorData.detail && (
+            errorData.detail.toLowerCase().includes('session expired') ||
+            errorData.detail.toLowerCase().includes('token expired') ||
+            errorData.detail.toLowerCase().includes('invalid refresh token') ||
+            errorData.detail.toLowerCase().includes('already used') ||
+            errorData.detail.toLowerCase().includes('please log in again')
+          ))
+        );
+        
+        if (isSessionExpired) {
+          console.log('⚠️  AUTH REQUEST: Session expired, triggering complete cleanup...');
+          await clearAllAuthData();
           console.log(`   └─ Redirecting to auth page`);
           // Trigger re-authentication by redirecting to auth
           window.location.href = '/auth';
           throw new Error('Session expired. Please log in again.');
         }
       } catch (jsonError) {
-        // If we can't parse the error, treat as generic auth error
-        console.log('⚠️  AUTH REQUEST: Authentication failed, may need to re-login');
+        // If we can't parse the error, but it's 401, likely auth issue
+        console.log('⚠️  AUTH REQUEST: Authentication failed, treating as session expired');
         console.log(`   └─ JSON parse error: ${jsonError}`);
+        // Clear auth data anyway for 401 errors
+        await clearAllAuthData();
+        window.location.href = '/auth';
+        throw new Error('Authentication failed. Please log in again.');
       }
     }
     
@@ -283,48 +368,46 @@ export const signup = async (
 };
 
 /**
- * Logout - Clear cookies via backend and localStorage
+ * Logout - Clear cookies via backend and localStorage using comprehensive cleanup
  */
 export const logout = async (): Promise<AuthResponse> => {
+  console.log('🚪 LOGOUT: Starting logout process');
+  
   try {
     // Call backend logout endpoint to clear httpOnly cookies
+    console.log('   ├─ Calling backend logout endpoint...');
     const response = await fetch(`${getApiBaseUrl()}/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });
 
-    // Also sign out from Supabase
-    await supabase.auth.signOut();
+    console.log(`   ├─ Backend logout response: ${response.status}`);
 
-    // Clear localStorage
-    try {
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('user_name');
-      localStorage.removeItem('user_picture');
-    } catch (error) {
-      console.warn('Failed to clear localStorage:', error);
-    }
+    // Always perform comprehensive cleanup regardless of backend response
+    console.log('   ├─ Performing comprehensive auth cleanup...');
+    await clearAllAuthData();
 
     if (!response.ok) {
-      console.warn('Backend logout failed, but Supabase logout succeeded');
+      console.warn('   ⚠️  Backend logout failed, but local cleanup completed');
+      return {
+        success: true,
+        message: 'Logged out locally (backend logout failed)',
+      };
     }
 
+    console.log('✅ LOGOUT: Complete logout successful');
     return {
       success: true,
       message: 'Logged out successfully',
     };
   } catch (error) {
-    console.error('Logout error:', error);
-    // Even if backend fails, ensure Supabase logout and clear localStorage
-    await supabase.auth.signOut();
-    try {
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('user_name');
-      localStorage.removeItem('user_picture');
-    } catch {}
+    console.error('💥 LOGOUT: Error during logout:', error);
+    // Even if everything fails, ensure local cleanup
+    console.log('   ├─ Performing emergency cleanup...');
+    await clearAllAuthData();
     return {
       success: true,
-      message: 'Logged out (with some issues)',
+      message: 'Logged out (with some issues, but local cleanup completed)',
     };
   }
 };

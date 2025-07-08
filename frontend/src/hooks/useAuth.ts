@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
-import { getAuthStatus } from '../utils/authUtils';
+import { getAuthStatus, logout as authUtilsLogout } from '../utils/authUtils';
 
 // Helper function to get clean backend URL
 const getBackendUrl = (): string => {
@@ -168,93 +168,39 @@ export const useAuth = () => {
     }
   }, [checkAuthStatus]);
 
-  // Sign out
+  // Sign out using comprehensive logout from authUtils
   const signOut = useCallback(async () => {
+    console.log('🚪 USE_AUTH: Starting signOut process');
     setAuthState((prev: AuthState) => ({ ...prev, isLoading: true }));
     
-    let backendLogoutSuccess = false;
-    let supabaseLogoutSuccess = false;
-    let errors: string[] = [];
-
     try {
-      // Priority 1: Clear backend session cookies (most critical)
-      try {
-        const response = await fetch(`${getBackendUrl()}/auth/logout`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        if (response.ok) {
-          backendLogoutSuccess = true;
-          console.log('Backend logout successful');
-        } else {
-          const errorText = await response.text().catch(() => 'Unknown error');
-          errors.push(`Backend logout failed: ${errorText}`);
-        }
-      } catch (error: any) {
-        errors.push(`Backend logout network error: ${error.message}`);
-        console.error('Backend logout failed:', error);
-      }
-
-      // Priority 2: Sign out from Supabase (independent of backend result)
-      try {
-        await supabase.auth.signOut();
-        supabaseLogoutSuccess = true;
-        console.log('Supabase logout successful');
-      } catch (error: any) {
-        errors.push(`Supabase logout failed: ${error.message}`);
-        console.error('Supabase logout failed:', error);
-      }
-
-    } finally {
-      // ALWAYS clear local state and cookies regardless of network failures
-      // This ensures user is never stuck in an inconsistent state
-      try {
-        // Clear localStorage backup
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('quotes');
-
-        // Clear extension cookies (if running in extension context)
-        await clearAuthCookies();
-
-        console.log('Local cleanup completed');
-      } catch (error: any) {
-        console.error('Local cleanup failed:', error);
-        errors.push(`Local cleanup failed: ${error.message}`);
-      }
-
-      // Always update auth state to logged out
+      // Use the comprehensive logout function from authUtils
+      const result = await authUtilsLogout();
+      
+      // Always update auth state to logged out regardless of result
       setAuthState({
         user: null,
         isLoading: false,
         isAuthenticated: false,
         error: null
       });
-    }
-
-    // Return result based on what succeeded
-    if (backendLogoutSuccess && supabaseLogoutSuccess) {
-      return { success: true };
-    } else if (backendLogoutSuccess || supabaseLogoutSuccess) {
-      // Partial success - user is effectively logged out
-      console.warn('Partial logout success:', { backendLogoutSuccess, supabaseLogoutSuccess, errors });
-      return { 
-        success: true, 
-        warning: `Partial logout: ${errors.join(', ')}`,
-        backendLogoutSuccess,
-        supabaseLogoutSuccess
-      };
-    } else {
-      // Both failed, but local cleanup still happened
-      console.error('Logout failed:', errors);
+      
+      console.log('✅ USE_AUTH: SignOut completed successfully');
+      return result;
+    } catch (error: any) {
+      console.error('💥 USE_AUTH: SignOut failed:', error);
+      // Still set state to logged out for consistency
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+        error: null
+      });
+      
       return { 
         success: false, 
-        error: `Logout failed: ${errors.join(', ')}`,
-        localCleanupCompleted: true // User is still effectively logged out locally
+        error: error.message || 'Logout failed',
+        localStateCleared: true
       };
     }
   }, []);
@@ -337,31 +283,47 @@ export const useAuth = () => {
     }
   };
 
-  // Helper function to clear cookies (matches backend cookie names exactly)
+  // Enhanced helper function to clear cookies across multiple domains
   const clearAuthCookies = async () => {
     if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
       try {
-        const apiUrl = import.meta.env.VITE_BACKEND_URL;
+        console.log('🧹 CLEAR_COOKIES: Clearing auth cookies across all domains');
         
-        // Clear all cookies that backend authentication middleware sets
+        // All domains where cookies might exist
+        const domains = [
+          import.meta.env.VITE_BACKEND_URL,
+          'https://extension-auth.vercel.app',
+          'https://hippocampus-puxn.onrender.com',
+          'http://127.0.0.1:8000'
+        ];
+        
+        // All possible auth cookie names
         const authCookieNames = [
           'access_token',    // JWT access token
           'refresh_token',   // JWT refresh token
-          'user_id',         // User ID (set by backend after token validation)
-          'user_name',       // User full name (set by backend after token validation)
-          'user_picture'     // User picture (set by backend after token validation)
+          'user_id',         // User ID
+          'user_name',       // User full name
+          'user_picture'     // User picture
         ];
 
-        for (const name of authCookieNames) {
-          await window.chrome.cookies.remove({
-            url: apiUrl,
-            name
-          });
+        for (const domain of domains) {
+          console.log(`   ├─ Clearing cookies from: ${domain}`);
+          for (const name of authCookieNames) {
+            try {
+              await window.chrome.cookies.remove({
+                url: domain,
+                name
+              });
+              console.log(`   │  ✓ Cleared ${name} from ${domain}`);
+            } catch (error) {
+              console.warn(`   │  ⚠️  Failed to clear ${name} from ${domain}:`, error);
+            }
+          }
         }
 
-        console.log('Extension auth cookies cleared');
+        console.log('✅ CLEAR_COOKIES: All domains processed');
       } catch (error) {
-        console.error('Error clearing auth cookies:', error);
+        console.error('❌ CLEAR_COOKIES: Error clearing auth cookies:', error);
       }
     }
   };

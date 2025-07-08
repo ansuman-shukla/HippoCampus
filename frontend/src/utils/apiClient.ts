@@ -1,6 +1,8 @@
 // API client for making authenticated requests to the backend
 // Uses cookie-based authentication handled by backend middleware
 
+import { logout } from './authUtils';
+
 const getApiBaseUrl = (): string => {
   // Always use the backend API URL for API calls
   const baseUrl = import.meta.env.VITE_BACKEND_URL;
@@ -69,6 +71,33 @@ export const makeRequest = async <T = any>(
     
     if (!response.ok) {
       console.error(`❌ API CLIENT: Request failed with status ${response.status}`);
+      
+      // Handle 401 Unauthorized responses by automatically logging out the user
+      if (response.status === 401) {
+        console.warn(`🚫 API CLIENT: Unauthorized response (401) - triggering automatic logout`);
+        
+        try {
+          // Clear all authentication data and cookies
+          await logout();
+          console.log(`🔄 API CLIENT: Logout completed, redirecting to auth page`);
+          
+          // Redirect to auth page for re-authentication
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth';
+          }
+          
+          // Throw a specific error for 401 responses
+          throw new Error('Session expired. Please log in again.');
+        } catch (logoutError) {
+          console.error(`💥 API CLIENT: Logout failed during 401 handling:`, logoutError);
+          // Still redirect to auth page even if logout fails
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth';
+          }
+          throw new Error('Authentication failed. Please log in again.');
+        }
+      }
+      
       let errorData: ApiError;
       try {
         errorData = await response.json();

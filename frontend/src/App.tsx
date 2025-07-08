@@ -18,6 +18,13 @@ const pageVariants = {
 import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 
+// Extend Window interface to include our custom property
+declare global {
+  interface Window {
+    authTransferInProgress?: boolean;
+  }
+}
+
 const PageWrapper = ({ children }: { children: ReactNode }) => (
   <motion.div
     initial="initial"
@@ -39,13 +46,14 @@ const AnimatedRoutes = () => {
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
     chrome.cookies.getAll({ url: import.meta.env.VITE_API_URL }, async (cookies) => {
-      console.log('Checking for external auth cookies:', cookies);
+      console.log('🔍 APP: Checking for external auth cookies:', cookies);
       const accessToken = cookies.find((cookie) => cookie.name === "access_token")?.value;
       const refreshToken = cookies.find((cookie) => cookie.name === "refresh_token")?.value;
 
       // If cookies are not found, try to get tokens from localStorage via content script or direct injection
       if (!accessToken) {
         try {
+          console.log('🔍 APP: No external cookies found, checking localStorage via content script');
           // First try to find an existing tab with the auth site
           const tabs = await chrome.tabs.query({ url: "*" });
           let result = null;
@@ -55,7 +63,7 @@ const AnimatedRoutes = () => {
               // Try content script first
               result = await chrome.tabs.sendMessage(tabs[0].id, { action: "getTokensFromLocalStorage" });
             } catch (error) {
-              console.log('Content script not available, trying direct injection:', error);
+              console.log('   ├─ Content script not available, trying direct injection:', error);
               
               // Fallback: inject script directly
               const [injectionResult] = await chrome.scripting.executeScript({
@@ -74,7 +82,7 @@ const AnimatedRoutes = () => {
           }
           
           if (result?.accessToken) {
-            console.log('Found tokens in localStorage, transferring to backend...');
+            console.log('✅ APP: Found tokens in localStorage, transferring to backend...');
             await setBackendCookies(result.accessToken, result.refreshToken);
             
             // Verify and navigate
@@ -88,87 +96,125 @@ const AnimatedRoutes = () => {
             });
             
             if (verificationCookie && location.pathname === "/") {
-              console.log('Backend cookies set successfully from localStorage, checking auth status');
+              console.log('✅ APP: Backend cookies set successfully from localStorage, checking auth status');
               await checkAuthStatus();
               Navigate("/submit");
             }
             return;
           }
         } catch (error) {
-          console.log('Could not get tokens from localStorage:', error);
+          console.log('⚠️  APP: Could not get tokens from localStorage:', error);
         }
       }
 
+      // Handle external auth cookies with improved coordination
       if (accessToken && location.pathname === "/") {
         try {
-          console.log('External auth tokens detected, transferring to backend...');
-          // Wait for cookies to be set before navigating
-          await setBackendCookies(accessToken, refreshToken);
+          console.log('🔄 APP: External auth tokens detected, starting coordinated transfer...');
+          console.log(`   ├─ Access token length: ${accessToken.length}`);
+          console.log(`   └─ Refresh token present: ${!!refreshToken}`);
           
-          // Double-check that cookies were properly set
-          const verificationCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
-            chrome.cookies.get({
-              url: import.meta.env.VITE_BACKEND_URL,
-              name: 'access_token'
-            }, (cookie) => {
-              resolve(cookie);
-            });
-          });
+          // Set a flag to prevent multiple simultaneous transfers
+          if (window.authTransferInProgress) {
+            console.log('⚠️  APP: Auth transfer already in progress, skipping');
+            return;
+          }
+          window.authTransferInProgress = true;
           
-          if (verificationCookie) {
-            console.log('Backend cookies set successfully, checking auth status to populate localStorage');
+          try {
+            // Wait for cookies to be set before navigating
+            await setBackendCookies(accessToken, refreshToken);
             
-            // Immediately check auth status to populate localStorage with user info
-            await checkAuthStatus();
+            // Double-check that cookies were properly set with retry logic
+            let verificationCookie = null;
+            let retryCount = 0;
+            const maxRetries = 3;
             
-            // Clean up external auth cookies after successful transfer
-            chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
-            chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
+            while (!verificationCookie && retryCount < maxRetries) {
+              verificationCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
+                chrome.cookies.get({
+                  url: import.meta.env.VITE_BACKEND_URL,
+                  name: 'access_token'
+                }, (cookie) => {
+                  resolve(cookie);
+                });
+              });
+              
+              if (!verificationCookie) {
+                retryCount++;
+                console.log(`⚠️  APP: Cookie verification failed, retry ${retryCount}/${maxRetries}`);
+                await new Promise(resolve => setTimeout(resolve, 500 * retryCount)); // Exponential backoff
+              }
+            }
             
-            Navigate("/submit");
-          } else {
-            throw new Error('Cookie verification failed');
+            if (verificationCookie) {
+              console.log('✅ APP: Backend cookies set successfully, checking auth status to populate localStorage');
+              
+              // Immediately check auth status to populate localStorage with user info
+              const authSuccess = await checkAuthStatus();
+              
+              if (authSuccess) {
+                console.log('✅ APP: Auth status verified, cleaning up and navigating');
+                
+                // Clean up external auth cookies after successful transfer
+                chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
+                chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
+                
+                // Navigate to submit page
+                Navigate("/submit");
+              } else {
+                throw new Error('Auth status check failed after cookie transfer');
+              }
+            } else {
+              throw new Error('Cookie verification failed after retries');
+            }
+          } finally {
+            // Always clear the transfer flag
+            window.authTransferInProgress = false;
           }
         } catch (error) {
-          console.error('Failed to set backend cookies:', error);
-          // Retry after a shorter delay for better responsiveness
-          setTimeout(() => checkForExternalAuth(), 1000);
+          window.authTransferInProgress = false;
+          console.error('❌ APP: Failed to set backend cookies:', error);
+          // Retry after a longer delay for error cases
+          setTimeout(() => checkForExternalAuth(), 2000);
         }
-      } else {
-        // Check if already authenticated with backend
-        chrome.cookies.get({
-          url: import.meta.env.VITE_BACKEND_URL,
-          name: 'access_token',
-        }, async (cookie) => {
-          if (cookie && location.pathname === "/") {
-            // User is authenticated, ensure localStorage is populated
-            await checkAuthStatus();
-            Navigate("/submit");
-          } else if (!cookie && !accessToken) {
-            // Check for refresh token before giving up
-            chrome.cookies.get({
-              url: import.meta.env.VITE_BACKEND_URL,
-              name: 'refresh_token',
-            }, async (refreshCookie) => {
-              if (refreshCookie) {
-                console.log('Found refresh token, attempting to restore session');
-                try {
-                  const authResult = await checkAuthStatus();
-                  if (authResult && location.pathname === "/") {
-                    Navigate("/submit");
-                  }
-                } catch (error) {
-                  console.log('Failed to restore session with refresh token:', error);
-                }
-              }
-              // Continue checking with shorter interval only if no refresh token
-              if (!refreshCookie) {
-                setTimeout(() => checkForExternalAuth(), 1000);
-              }
-            });
-          }
-        });
+        return; // Exit early after handling external auth
       }
+
+      // Check if already authenticated with backend (only if no external auth was found)
+      chrome.cookies.get({
+        url: import.meta.env.VITE_BACKEND_URL,
+        name: 'access_token',
+      }, async (cookie) => {
+        if (cookie && location.pathname === "/") {
+          console.log('✅ APP: Backend authentication found, ensuring localStorage is populated');
+          // User is authenticated, ensure localStorage is populated
+          await checkAuthStatus();
+          Navigate("/submit");
+        } else if (!cookie && !accessToken) {
+          // Check for refresh token before giving up
+          chrome.cookies.get({
+            url: import.meta.env.VITE_BACKEND_URL,
+            name: 'refresh_token',
+          }, async (refreshCookie) => {
+            if (refreshCookie) {
+              console.log('🔄 APP: Found refresh token, attempting to restore session');
+              try {
+                const authResult = await checkAuthStatus();
+                if (authResult && location.pathname === "/") {
+                  Navigate("/submit");
+                }
+              } catch (error) {
+                console.log('❌ APP: Failed to restore session with refresh token:', error);
+              }
+            }
+            // Continue checking with shorter interval only if no refresh token
+            if (!refreshCookie && !window.authTransferInProgress) {
+              setTimeout(() => checkForExternalAuth(), 1000);
+            }
+          });
+        }
+      });
     });
   }
 

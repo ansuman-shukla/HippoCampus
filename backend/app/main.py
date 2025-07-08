@@ -161,9 +161,42 @@ def handle_token_refresh(refresh_token):
             error_detail = refresh_error.detail
             logger.error(f"Token refresh failed: {error_detail}")
             
-            # Check for "already used" error - this means we need to re-authenticate
-            if "already_used" in error_detail.lower() or "already used" in error_detail:
-                logger.warning("Refresh token already used - requiring re-authentication")
+            # Enhanced detection for refresh token issues
+            is_token_invalid = False
+            
+            # Check for various token invalid scenarios
+            if isinstance(error_detail, str):
+                # Direct string check
+                error_lower = error_detail.lower()
+                is_token_invalid = (
+                    "already_used" in error_lower or 
+                    "already used" in error_lower or
+                    "refresh_token_already_used" in error_lower or
+                    "invalid refresh token" in error_lower or
+                    "expired" in error_lower or
+                    "revoked" in error_lower
+                )
+                
+                # Also try to parse as JSON if it looks like JSON
+                if error_detail.strip().startswith('{'):
+                    try:
+                        import json
+                        error_json = json.loads(error_detail)
+                        error_code = error_json.get("error_code", "")
+                        error_msg = error_json.get("msg", "").lower()
+                        
+                        is_token_invalid = (
+                            error_code == "refresh_token_already_used" or
+                            "already used" in error_msg or
+                            "invalid refresh token" in error_msg or
+                            "expired" in error_msg
+                        )
+                        logger.info(f"   ├─ Parsed JSON error: code={error_code}, msg={error_msg}")
+                    except json.JSONDecodeError:
+                        pass  # Not JSON, use string check above
+            
+            if is_token_invalid:
+                logger.warning("Refresh token is invalid/expired - requiring complete re-authentication")
                 return None, None, create_error_response(
                     "Session expired. Please log in again.",
                     status_code=401,
@@ -257,6 +290,33 @@ def update_user_cookies(response, request, user_id, payload):
         logger.error(f"❌ USER COOKIES: Error setting user cookies: {str(e)}")
         logger.error(f"   └─ This may affect user experience but not authentication")
 
+def clear_all_auth_cookies(response):
+    """Clear all authentication cookies with proper domain settings"""
+    logger.info(f"🧹 COOKIE CLEANUP: Clearing all authentication cookies")
+    
+    auth_cookie_names = [
+        "access_token",
+        "refresh_token", 
+        "user_id",
+        "user_name",
+        "user_picture"
+    ]
+    
+    for cookie_name in auth_cookie_names:
+        try:
+            # Clear with secure settings (matching how they were set)
+            response.delete_cookie(
+                key=cookie_name,
+                path="/",
+                samesite="none",
+                secure=True
+            )
+            logger.info(f"   ├─ Cleared cookie: {cookie_name}")
+        except Exception as e:
+            logger.error(f"   ❌ Failed to clear cookie {cookie_name}: {str(e)}")
+    
+    logger.info(f"✅ COOKIE CLEANUP: All authentication cookies cleared")
+
 # Create FastAPI app with enhanced error handling and disabled documentation
 app = FastAPI(
     title="HippoCampus API",
@@ -342,13 +402,8 @@ async def authorisation_middleware(request: Request, call_next):
                 # Check if this is a session expired error requiring re-authentication
                 if error_response.status_code == 401 and "session_expired" in str(error_response.body):
                     logger.warning(f"🚫 AUTH MIDDLEWARE: Session expired - clearing all auth cookies")
-                    # Clear cookies to force fresh login
-                    response = error_response
-                    response.delete_cookie("access_token", samesite="none", secure=True)
-                    response.delete_cookie("refresh_token", samesite="none", secure=True)
-                    response.delete_cookie("user_id")
-                    response.delete_cookie("user_name")
-                    response.delete_cookie("user_picture")
+                    # Clear all authentication cookies to force fresh login
+                    clear_all_auth_cookies(error_response)
                 return error_response
             
             logger.info(f"✅ AUTH MIDDLEWARE: Token refresh successful")
