@@ -7,6 +7,8 @@ from typing import List, Optional, Dict
 from langchain_core.documents import Document
 from app.services.pinecone_service import *
 from app.services.memories_service import *
+from app.middleware.subscription_middleware import check_memory_middleware
+from app.services.subscription_service import increment_memory_count
 from pydantic import BaseModel
 
 # https://hippocampus-backend.onrender.com/links/save for saving links
@@ -32,9 +34,34 @@ async def save_link(
         logger.warning("Unauthorized save attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
     
+    # Check memory limits before proceeding with save
+    try:
+        await check_memory_middleware(request)
+    except HTTPException as e:
+        # Re-raise subscription limit errors (402) directly
+        if e.status_code == 402:
+            logger.warning(f"Memory save blocked for user {user_id} - subscription limit exceeded")
+            raise e
+        # Re-raise other auth errors
+        logger.error(f"Authentication error during memory limit check for user {user_id}: {str(e)}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error during memory limit check for user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    
     try:
         logger.info(f"Attempting to save document for user {user_id}")
         result = await save_to_vector_db(obj=link_data, namespace=user_id)
+        
+        # Increment memory count after successful save
+        try:
+            subscription_data = increment_memory_count(user_id)
+            logger.info(f"Memory count incremented for user {user_id} - new total: {subscription_data['total_memories_saved']}")
+        except Exception as increment_error:
+            # Log the error but don't fail the save operation since the memory was already saved
+            logger.error(f"Failed to increment memory count for user {user_id} after successful save: {str(increment_error)}")
+            logger.warning(f"Memory saved successfully but count tracking failed - manual correction may be needed")
+        
         logger.info(f"Successfully saved document for user {user_id}")
         return result
     except DocumentSaveError as e:

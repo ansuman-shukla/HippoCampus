@@ -10,6 +10,9 @@ from app.routers.get_quotes import router as get_quotes_router
 from app.routers.notesRouter import router as notes_router
 from app.routers.summaryRouter import router as summary_router
 from app.routers.auth_router import router as auth_router
+from app.routers.subscription_router import router as subscription_router
+from app.routers.admin_router import router as admin_router
+from app.routers.monitoring_router import router as monitoring_router
 from app.exceptions.global_exceptions import (
     global_exception_handler,
     AuthenticationError,
@@ -17,6 +20,7 @@ from app.exceptions.global_exceptions import (
 )
 from app.core.database_wrapper import get_database_health
 from app.core.pinecone_wrapper import get_pinecone_health
+from app.services.cron_service import start_cron_scheduler, stop_cron_scheduler, get_cron_status, get_cron_metrics
 
 load_dotenv()
 
@@ -317,15 +321,112 @@ def clear_all_auth_cookies(response):
     
     logger.info(f"✅ COOKIE CLEANUP: All authentication cookies cleared")
 
-# Create FastAPI app with enhanced error handling and disabled documentation
+# Create FastAPI app with enhanced error handling and comprehensive API documentation
 app = FastAPI(
     title="HippoCampus API",
-    description="I help you remember everything",
+    description="""
+## HippoCampus - I help you remember everything
+
+A comprehensive knowledge management system with subscription-based limits for memories and summaries.
+
+### Features
+
+- **Memory Management**: Save and organize web content with vector search
+- **AI Summaries**: Generate intelligent summaries of web content
+- **Subscription Tiers**: Free and Pro plans with different limits
+- **Admin Dashboard**: Complete subscription and user management
+- **Monitoring**: Real-time metrics and health monitoring
+
+### Subscription Tiers
+
+#### Free Tier
+- Up to 100 total memories (lifetime)
+- Up to 5 summary pages per month
+
+#### Pro Tier ($8/month)
+- Unlimited memories
+- Up to 100 summary pages per month
+    """,
     version="1.0.0",
-    docs_url=None,     # Disable Swagger UI
-    redoc_url=None,    # Disable ReDoc
-    openapi_url=None   # Disable OpenAPI JSON endpoint
+    contact={
+        "name": "HippoCampus Support",
+        "email": "support@hippocampus.ai",
+    },
+    license_info={
+        "name": "MIT",
+    },
+    docs_url="/docs",           # Enable Swagger UI for development
+    redoc_url="/redoc",         # Enable ReDoc for development  
+    openapi_url="/openapi.json", # Enable OpenAPI JSON endpoint
+    servers=[
+        {
+            "url": "https://hippocampus-backend.onrender.com",
+            "description": "Production server"
+        },
+        {
+            "url": "http://localhost:8000", 
+            "description": "Development server"
+        }
+    ]
 )
+
+# CRON Scheduler Lifecycle Management
+@app.on_event("startup")
+async def startup_event():
+    """
+    FastAPI startup event - initialize CRON scheduler for subscription maintenance
+    """
+    logger.info("🚀 APPLICATION STARTUP: Initializing HippoCampus API services")
+    
+    try:
+        # Start the CRON scheduler for subscription jobs
+        logger.info("📅 STARTUP: Starting CRON scheduler for subscription maintenance")
+        scheduler_result = start_cron_scheduler()
+        
+        if scheduler_result.get("status") == "started":
+            logger.info("✅ STARTUP: CRON scheduler started successfully")
+            logger.info(f"   ├─ Jobs registered: {scheduler_result.get('jobs_registered', 0)}")
+            
+            # Log registered jobs for monitoring
+            jobs = scheduler_result.get("jobs", [])
+            for job in jobs:
+                logger.info(f"   ├─ Job: {job.get('name')} (ID: {job.get('id')})")
+                logger.info(f"   │   └─ Next run: {job.get('next_run_time')}")
+            
+            logger.info(f"   └─ Scheduler operational and monitoring subscription lifecycle")
+        else:
+            logger.error("❌ STARTUP: Failed to start CRON scheduler")
+            logger.error(f"   └─ Error: {scheduler_result.get('message', 'Unknown error')}")
+            # Don't fail startup if scheduler fails - app can still function
+            
+    except Exception as e:
+        logger.error(f"❌ STARTUP: Unexpected error starting CRON scheduler: {str(e)}")
+        logger.error(f"   └─ Application will continue without background job scheduling")
+    
+    logger.info("✅ APPLICATION STARTUP: HippoCampus API initialization complete")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    FastAPI shutdown event - gracefully stop CRON scheduler
+    """
+    logger.info("🛑 APPLICATION SHUTDOWN: Gracefully shutting down HippoCampus API services")
+    
+    try:
+        # Stop the CRON scheduler
+        logger.info("📅 SHUTDOWN: Stopping CRON scheduler")
+        scheduler_result = stop_cron_scheduler()
+        
+        if scheduler_result.get("status") == "stopped":
+            logger.info("✅ SHUTDOWN: CRON scheduler stopped successfully")
+        else:
+            logger.warning(f"⚠️ SHUTDOWN: CRON scheduler stop returned: {scheduler_result.get('message', 'Unknown result')}")
+            
+    except Exception as e:
+        logger.error(f"❌ SHUTDOWN: Error stopping CRON scheduler: {str(e)}")
+        logger.error(f"   └─ This may leave background processes running")
+    
+    logger.info("✅ APPLICATION SHUTDOWN: HippoCampus API shutdown complete")
 
 @app.middleware("http")
 async def authorisation_middleware(request: Request, call_next):
@@ -338,9 +439,11 @@ async def authorisation_middleware(request: Request, call_next):
     logger.info(f"   ├─ Remote IP: {request.client.host if request.client else 'Unknown'}")
     logger.info(f"   └─ Content-Type: {request.headers.get('content-type', 'None')}")
     
-    # Skip auth for health check, auth endpoints, and quotes
-    if (request.url.path in ["/health", "/health/detailed"] or 
-        request.url.path.startswith("/auth/") or request.url.path.startswith("/quotes")):
+    # Skip auth for health check, auth endpoints, quotes, and documentation
+    if (request.url.path in ["/health", "/health/detailed", "/docs", "/redoc", "/openapi.json"] or 
+        request.url.path.startswith("/auth/") or 
+        request.url.path.startswith("/quotes") or
+        request.url.path.startswith("/monitoring/health")):
         logger.info(f"✅ AUTH MIDDLEWARE: Skipping auth for public endpoint: {request.url.path}")
         return await call_next(request)
     
@@ -490,7 +593,13 @@ app.add_exception_handler(Exception, global_exception_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["chrome-extension://pbmpglcjfdjmjokffakahlncegdcefno"],
+    allow_origins=[
+        "chrome-extension://pbmpglcjfdjmjokffakahlncegdcefno",  # Chrome extension
+        "http://localhost:5173",  # Admin frontend dev server
+        "http://localhost:4173",  # Admin frontend preview
+        "http://127.0.0.1:5173",  # Admin frontend dev server (alternative)
+        "http://127.0.0.1:4173",  # Admin frontend preview (alternative)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -512,10 +621,12 @@ async def detailed_health_check():
     try:
         db_health = await get_database_health()
         pinecone_health = await get_pinecone_health()
+        cron_health = get_cron_status()
 
         overall_status = "healthy"
         if (db_health.get("status") != "healthy" or
-            pinecone_health.get("status") != "healthy"):
+            pinecone_health.get("status") != "healthy" or
+            not cron_health.get("scheduler_running", False)):
             overall_status = "degraded"
 
         return {
@@ -523,7 +634,13 @@ async def detailed_health_check():
             "timestamp": datetime.now().isoformat(),
             "services": {
                 "database": db_health,
-                "vector_db": pinecone_health
+                "vector_db": pinecone_health,
+                "cron_scheduler": {
+                    "status": "healthy" if cron_health.get("scheduler_running", False) else "unhealthy",
+                    "scheduler_running": cron_health.get("scheduler_running", False),
+                    "jobs_count": cron_health.get("jobs_count", 0),
+                    "jobs": cron_health.get("jobs", [])
+                }
             }
         }
     except Exception as e:
@@ -537,8 +654,35 @@ async def detailed_health_check():
             }
         )
 
+@app.get("/health/cron")
+async def cron_health_check():
+    """CRON scheduler specific health check and status"""
+    try:
+        cron_status = get_cron_status()
+        cron_metrics = get_cron_metrics()
+        
+        return {
+            "status": "healthy" if cron_status.get("scheduler_running", False) else "unhealthy",
+            "timestamp": datetime.now().isoformat(),
+            "scheduler": cron_status,
+            "metrics": cron_metrics
+        }
+    except Exception as e:
+        logger.error(f"Error in CRON health check: {str(e)}")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "timestamp": datetime.now().isoformat(),
+                "error": "CRON health check failed"
+            }
+        )
+
 app.include_router(bookmark_router)
 app.include_router(get_quotes_router)
 app.include_router(notes_router)
 app.include_router(summary_router)
 app.include_router(auth_router)
+app.include_router(subscription_router)
+app.include_router(admin_router)
+app.include_router(monitoring_router)

@@ -1,10 +1,11 @@
 from app.core.database import collection
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-async def create_user_if_not_exists(data: dict):
+def create_user_if_not_exists(data: dict):
     """
     Create a user if they do not exist in the database.
     """
@@ -56,9 +57,9 @@ async def create_user_if_not_exists(data: dict):
     }
 
     logger.info(f"🔍 USER SERVICE: Checking if user exists in database")
-    if not await user_exists(user_id):
+    if not user_exists(user_id):
         logger.info(f"➕ USER SERVICE: User not found, creating new user")
-        await create_user(user_data)
+        create_user(user_data)
         logger.info(f"✅ USER SERVICE: New user created successfully")
     else:
         logger.info(f"✅ USER SERVICE: User already exists, skipping creation")
@@ -66,7 +67,7 @@ async def create_user_if_not_exists(data: dict):
     return user_data
 
 
-async def user_exists(user_id: str):
+def user_exists(user_id: str):
     logger.info(f"🔍 USER SERVICE: Checking if user exists")
     logger.info(f"   └─ User ID: {user_id}")
     
@@ -80,19 +81,37 @@ async def user_exists(user_id: str):
     return exists
 
 
-async def create_user(user_data: dict):
+def create_user(user_data: dict):
     logger.info(f"➕ USER SERVICE: Creating new user in database")
     logger.info(f"   ├─ User ID: {user_data.get('id')}")
     logger.info(f"   ├─ Email: {user_data.get('email')}")
     logger.info(f"   ├─ Full name: {user_data.get('full_name')}")
     logger.info(f"   └─ Data keys: {list(user_data.keys())}")
     
+    # Add subscription defaults for new users
+    now = datetime.utcnow()
+    monthly_reset_date = datetime(now.year, now.month, 1)
+    
+    user_data_with_subscription = user_data.copy()
+    user_data_with_subscription.update({
+        "subscription_tier": "free",
+        "subscription_status": "active", 
+        "subscription_start_date": now,
+        "subscription_end_date": None,
+        "total_memories_saved": 0,
+        "monthly_summary_pages_used": 0,
+        "monthly_summary_reset_date": monthly_reset_date
+    })
+    
+    logger.info(f"   ├─ Added subscription defaults")
+    logger.info(f"   └─ Updated data keys: {list(user_data_with_subscription.keys())}")
+    
     try:
-        result = collection.insert_one(user_data)
+        result = collection.insert_one(user_data_with_subscription)
         logger.info(f"✅ USER SERVICE: User created successfully")
         logger.info(f"   ├─ Inserted ID: {result.inserted_id}")
         logger.info(f"   └─ Acknowledged: {result.acknowledged}")
-        return user_data
+        return user_data_with_subscription
     except Exception as e:
         logger.error(f"❌ USER SERVICE: Failed to create user in database")
         logger.error(f"   ├─ Error type: {type(e).__name__}")

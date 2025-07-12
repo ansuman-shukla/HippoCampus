@@ -2,6 +2,74 @@
 const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
 const API_URL = '__VITE_API_URL__';
 
+// Subscription upgrade messages
+const SUBSCRIPTION_MESSAGES = {
+  memory_limit: {
+    title: "Memory Limit Reached",
+    message: "You've reached your limit of 100 saved memories on the Free plan. Upgrade to Pro for unlimited memories!",
+    benefits: ["Unlimited memory saves", "Up to 100 summary pages per month", "Priority support"],
+    action: "Upgrade to Pro ($8/month)"
+  },
+  summary_limit: {
+    title: "Summary Limit Reached", 
+    message: "You've used all 5 summary pages for this month on the Free plan. Upgrade to Pro for 100 pages per month!",
+    benefits: ["Up to 100 summary pages monthly", "Unlimited memory saves", "Priority support"],
+    action: "Upgrade to Pro ($8/month)"
+  },
+  generic: {
+    title: "Subscription Limit Reached",
+    message: "You've reached a limit on your current plan. Upgrade to Pro for expanded access!",
+    benefits: ["Unlimited memory saves", "Up to 100 summary pages monthly", "Priority support"],
+    action: "Upgrade to Pro ($8/month)"
+  }
+};
+
+// Function to determine limit type from error response
+function getSubscriptionLimitType(errorData) {
+  if (!errorData || !errorData.detail) return 'generic';
+  
+  const detail = errorData.detail.toLowerCase();
+  if (detail.includes('memory') || detail.includes('save')) {
+    return 'memory_limit';
+  } else if (detail.includes('summary') || detail.includes('page')) {
+    return 'summary_limit';
+  }
+  return 'generic';
+}
+
+// Function to show upgrade notification
+function showUpgradeNotification(limitType = 'generic') {
+  const message = SUBSCRIPTION_MESSAGES[limitType];
+  
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'HippoCampusLogo.png',
+    title: message.title,
+    message: message.message + "\n\n" + message.benefits.join("\n• "),
+    buttons: [{title: message.action}, {title: "Maybe Later"}]
+  });
+  
+  console.log(`💰 BACKGROUND: Subscription limit reached - ${limitType}`);
+}
+
+// Handle notification clicks for subscription upgrades
+chrome.notifications.onClicked.addListener((notificationId) => {
+  // Open upgrade page when notification is clicked
+  const upgradeUrl = `${BACKEND_URL.replace('/api', '')}/upgrade`; // Assuming frontend has an upgrade page
+  chrome.tabs.create({ url: upgradeUrl });
+  chrome.notifications.clear(notificationId);
+});
+
+chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+  if (buttonIndex === 0) {
+    // "Upgrade to Pro" button clicked
+    const upgradeUrl = `${BACKEND_URL.replace('/api', '')}/upgrade`;
+    chrome.tabs.create({ url: upgradeUrl });
+  }
+  // "Maybe Later" button (index 1) - just dismiss the notification
+  chrome.notifications.clear(notificationId);
+});
+
 // Multi-domain cookie cleanup function
 async function clearAllAuthCookies() {
   console.log('🧹 BACKGROUND: Starting comprehensive cookie cleanup across all domains');
@@ -265,6 +333,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               retryCount++;
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
+            } else if (response.status === 402) {
+              // Payment Required - subscription limit reached
+              console.log('💰 BACKGROUND: Submit blocked - subscription limit reached');
+              const errorData = await response.json().catch(() => ({ detail: 'Memory limit reached' }));
+              const limitType = getSubscriptionLimitType(errorData);
+              showUpgradeNotification(limitType);
+              throw new Error(errorData.detail || 'Subscription limit reached. Please upgrade to continue.');
             } else {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -325,6 +400,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               retryCount++;
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
+            } else if (response.status === 402) {
+              // Payment Required - subscription limit reached
+              console.log('💰 BACKGROUND: SaveNotes blocked - subscription limit reached');
+              const errorData = await response.json().catch(() => ({ detail: 'Notes limit reached' }));
+              const limitType = getSubscriptionLimitType(errorData);
+              showUpgradeNotification(limitType);
+              throw new Error(errorData.detail || 'Subscription limit reached. Please upgrade to continue.');
             } else {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -547,6 +629,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               retryCount++;
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
+            } else if (response.status === 402) {
+              // Payment Required - subscription limit reached
+              console.log('💰 BACKGROUND: GenerateSummary blocked - subscription limit reached');
+              const errorData = await response.json().catch(() => ({ detail: 'Summary limit reached' }));
+              const limitType = getSubscriptionLimitType(errorData);
+              showUpgradeNotification(limitType);
+              throw new Error(errorData.detail || 'Summary limit reached. Please upgrade to continue.');
             } else {
               throw new Error(`HTTP error! status: ${response.status}`);
             }

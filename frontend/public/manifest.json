@@ -12,7 +12,8 @@
     "tabs",
     "bookmarks",
     "cookies",
-    "storage"
+    "storage",
+    "notifications"
   ],
   "host_permissions": [
     "http://localhost:5173/*",

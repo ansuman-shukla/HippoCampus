@@ -5,6 +5,7 @@ import Intro from "./page/IntroPage";
 import SearchResponse from "./page/SearchResultPage";
 import ResponsePage from "./page/ResponsePage";
 import SummarizePage from "./page/SummarizePage";
+import { AdminLogin, AdminDashboard } from "./admin";
 import './index.css';
 
 
@@ -402,6 +403,8 @@ const AnimatedRoutes = () => {
         <Route path="/search" element={<PageWrapper><SearchPage Quote={quotes[Math.floor(Math.random() * quotes.length)]} /></PageWrapper>} />
         <Route path="/response" element={<PageWrapper><SearchResponse /></PageWrapper>} />
         <Route path="/summarize" element={<PageWrapper><SummarizePage /></PageWrapper>} />
+        <Route path="/admin/login" element={<PageWrapper><AdminLogin /></PageWrapper>} />
+        <Route path="/admin/dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );

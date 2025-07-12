@@ -34,10 +34,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.runtime.sendMessage(
       { action: "generateSummaryforContent", content: content, cookies: localStorage.getItem("access_token") },
       (response) => {
-        if (response) {
+        if (response && response.success) {
           console.log("Content sent to background script");
           console.log("Summary:", response.data.summary);
           sendResponse({ content: response.data.summary });
+        } else if (response && !response.success) {
+          console.error("Summary generation failed:", response.error);
+          
+          // Check if it's a subscription limit error
+          if (response.error && response.error.includes('limit reached')) {
+            sendResponse({ 
+              error: "Summary limit reached. Please upgrade to Pro for more summaries this month.",
+              isSubscriptionLimit: true 
+            });
+          } else {
+            sendResponse({ error: response.error || "Failed to generate summary" });
+          }
         } else {
           console.error("Failed to send content to background script");
           sendResponse({ error: "Failed to send content to background script" });

@@ -1,0 +1,24 @@
+❌ SUBSCRIPTION ERROR: Subscription error (payment_failed): Payment processing failed
+   └─ User ID: user_error
+Exception: Test subscription error
+{"timestamp": "2025-07-11T19:40:50.036758+00:00", "level": "ERROR", "logger": "subscription_events", "event_type": "error", "user_id": "user_error", "message": "Subscription error (payment_failed): Payment processing failed", "subscription_data": {"error_type": "payment_failed", "error_message": "Payment processing failed", "context": {"payment_method": "stripe", "amount": 8.0}}, "analytics_data": {"error_category": "subscription", "error_type": "payment_failed", "requires_investigation": true, "event_timestamp": "2025-07-11T19:40:50.036758+00:00", "admin_initiated": false, "admin_user": null}, "exception": "Exception: Test subscription error"}
+❌ SUBSCRIPTION ERROR: Subscription error (payment_failed): Error
+   └─ User ID: user3
+Exception: test
+{"timestamp": "2025-07-11T19:40:50.051025+00:00", "level": "ERROR", "logger": "subscription_events", "event_type": "error", "user_id": "user3", "message": "Subscription error (payment_failed): Error", "subscription_data": {"error_type": "payment_failed", "error_message": "Error", "context": {}}, "analytics_data": {"error_category": "subscription", "error_type": "payment_failed", "requires_investigation": true, "event_timestamp": "2025-07-11T19:40:50.051025+00:00", "admin_initiated": false, "admin_user": null}, "exception": "Exception: test"}
+❌ SUBSCRIPTION ERROR: Subscription error (payment_failed): Payment processing failed
+   └─ User ID: user_error
+Exception: Test subscription error
+{"timestamp": "2025-07-11T19:42:29.694315+00:00", "level": "ERROR", "logger": "subscription_events", "event_type": "error", "user_id": "user_error", "message": "Subscription error (payment_failed): Payment processing failed", "subscription_data": {"error_type": "payment_failed", "error_message": "Payment processing failed", "context": {"payment_method": "stripe", "amount": 8.0}}, "analytics_data": {"error_category": "subscription", "error_type": "payment_failed", "requires_investigation": true, "event_timestamp": "2025-07-11T19:42:29.694315+00:00", "admin_initiated": false, "admin_user": null}, "exception": "Exception: Test subscription error"}
+❌ SUBSCRIPTION ERROR: Subscription error (payment_failed): Error
+   └─ User ID: user3
+Exception: test
+{"timestamp": "2025-07-11T19:42:29.707523+00:00", "level": "ERROR", "logger": "subscription_events", "event_type": "error", "user_id": "user3", "message": "Subscription error (payment_failed): Error", "subscription_data": {"error_type": "payment_failed", "error_message": "Error", "context": {}}, "analytics_data": {"error_category": "subscription", "error_type": "payment_failed", "requires_investigation": true, "event_timestamp": "2025-07-11T19:42:29.707523+00:00", "admin_initiated": false, "admin_user": null}, "exception": "Exception: test"}
+❌ SUBSCRIPTION ERROR: Subscription error (payment_failed): Payment processing failed
+   └─ User ID: user_error
+Exception: Test subscription error
+{"timestamp": "2025-07-11T19:43:40.037952+00:00", "level": "ERROR", "logger": "subscription_events", "event_type": "error", "user_id": "user_error", "message": "Subscription error (payment_failed): Payment processing failed", "subscription_data": {"error_type": "payment_failed", "error_message": "Payment processing failed", "context": {"payment_method": "stripe", "amount": 8.0}}, "analytics_data": {"error_category": "subscription", "error_type": "payment_failed", "requires_investigation": true, "event_timestamp": "2025-07-11T19:43:40.037952+00:00", "admin_initiated": false, "admin_user": null}, "exception": "Exception: Test subscription error"}
+❌ SUBSCRIPTION ERROR: Subscription error (payment_failed): Error
+   └─ User ID: user3
+Exception: test
+{"timestamp": "2025-07-11T19:43:40.048235+00:00", "level": "ERROR", "logger": "subscription_events", "event_type": "error", "user_id": "user3", "message": "Subscription error (payment_failed): Error", "subscription_data": {"error_type": "payment_failed", "error_message": "Error", "context": {}}, "analytics_data": {"error_category": "subscription", "error_type": "payment_failed", "requires_investigation": true, "event_timestamp": "2025-07-11T19:43:40.048235+00:00", "admin_initiated": false, "admin_user": null}, "exception": "Exception: test"}

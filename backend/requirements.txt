@@ -12,3 +12,10 @@ langchain
 langchain_google_genai
 pinecone_text
 google-generativeai
+apscheduler
+
+# Testing dependencies
+pytest
+pytest-asyncio
+pymongo
+mongomock
