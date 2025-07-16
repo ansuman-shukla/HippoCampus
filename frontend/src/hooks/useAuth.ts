@@ -39,7 +39,15 @@ export const useAuth = () => {
   // Check authentication status from backend (single source of truth)
   // Backend middleware handles token validation, refresh, and user management automatically
   const checkAuthStatus = useCallback(async () => {
+    // Prevent multiple simultaneous auth checks
+    if (authState.isLoading) {
+      console.log('Auth check already in progress, skipping');
+      return false;
+    }
+
     try {
+      setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+      
       const authResult = await getAuthStatus();
       
       if (authResult.success && authResult.user) {
@@ -73,7 +81,7 @@ export const useAuth = () => {
       });
       return false;
     }
-  }, []);
+  }, [authState.isLoading]);
 
   // Sign in with Supabase
   const signIn = useCallback(async (email: string, password: string) => {
@@ -294,7 +302,7 @@ export const useAuth = () => {
           import.meta.env.VITE_BACKEND_URL,
           'https://extension-auth.vercel.app',
           'https://hippocampus-puxn.onrender.com',
-          'http://127.0.0.1:8000'
+          // 'http://127.0.0.1:8000'
         ];
         
         // All possible auth cookie names

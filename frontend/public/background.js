@@ -10,7 +10,7 @@ async function clearAllAuthCookies() {
   const domains = [
     'https://hippocampus-puxn.onrender.com',
     'https://extension-auth.vercel.app',
-    'http://127.0.0.1:8000',
+    // 'http://127.0.0.1:8000',
     BACKEND_URL
   ];
   
@@ -64,6 +64,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     async function fetchAllData() {
       try {
         console.log('🔍 BACKGROUND: Starting searchAll request');
+        
+        // Check authentication status first
+        const authCheck = await fetch(`${BACKEND_URL}/auth/status`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!authCheck.ok) {
+          console.error('❌ BACKGROUND: Authentication check failed before searchAll');
+          sendResponse({ success: false, error: 'Authentication required. Please log in again.' });
+          return;
+        }
+        
+        const authData = await authCheck.json();
+        if (!authData.is_authenticated) {
+          console.error('❌ BACKGROUND: User not authenticated for searchAll');
+          sendResponse({ success: false, error: 'Authentication required. Please log in again.' });
+          return;
+        }
+        
+        console.log('✅ BACKGROUND: Authentication verified, proceeding with searchAll');
+        
+        // Add a small delay to prevent rapid auth checks
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Fetch links first with retry logic
         let linksResponse;

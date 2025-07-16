@@ -70,7 +70,7 @@ const clearAllAuthData = async (): Promise<void> => {
         import.meta.env.VITE_BACKEND_URL,
         'https://extension-auth.vercel.app',
         'https://hippocampus-puxn.onrender.com',
-        'http://127.0.0.1:8000'
+        // 'http://127.0.0.1:8000'
       ];
       
       const cookieNames = ['access_token', 'refresh_token', 'user_id', 'user_name', 'user_picture'];
@@ -417,7 +417,14 @@ export const logout = async (): Promise<AuthResponse> => {
  */
 export const getAuthStatus = async (): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/auth/status`, {
+    console.log('🔍 AUTH UTILS: Starting auth status check');
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Auth status check timeout')), 10000); // 10 second timeout
+    });
+
+    const fetchPromise = fetch(`${getApiBaseUrl()}/auth/status`, {
       method: 'GET',
       credentials: 'include', // Always use cookies - backend handles auth
       headers: {
@@ -425,8 +432,13 @@ export const getAuthStatus = async (): Promise<AuthResponse> => {
       },
     });
 
+    const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+
+    console.log(`📡 AUTH UTILS: Response status: ${response.status}`);
+
     if (!response.ok) {
       if (response.status === 401) {
+        console.warn('Auth status check returned 401 - user not authenticated');
         return {
           success: false,
           error: 'Not authenticated',
@@ -434,6 +446,7 @@ export const getAuthStatus = async (): Promise<AuthResponse> => {
       }
 
       const errorData = await response.json().catch(() => ({}));
+      console.error('Auth status check failed:', errorData);
       return {
         success: false,
         error: errorData.detail || 'Failed to get auth status',
@@ -441,6 +454,7 @@ export const getAuthStatus = async (): Promise<AuthResponse> => {
     }
 
     const data = await response.json();
+    console.log('Auth status check successful:', data);
     
     // Check if user is authenticated based on backend response
     if (data.is_authenticated && data.user_id) {

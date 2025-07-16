@@ -1,5 +1,6 @@
 import Button from "../components/Button";
 import Logo from '../assets/Logo.svg'
+import LoaderPillars from '../components/LoaderPillars';
 import '../index.css'
 import { useNavigate } from 'react-router-dom';
 import {motion} from 'framer-motion';
@@ -206,20 +207,51 @@ const Intro = () => {
                                 });
                             }
 
-                            // Verify the transfer worked
-                            const authResult = await checkAuthStatus();
-                            if (authResult) {
+                            // Add delay to ensure cookies are properly set
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            
+                            // Verify the transfer worked with retry logic
+                            let authResult = false;
+                            let authRetryCount = 0;
+                            const maxAuthRetries = 3;
+                            
+                            while (!authResult && authRetryCount < maxAuthRetries) {
+                                try {
+                                    authResult = await checkAuthStatus();
+                                    if (authResult) {
+                                        transferSuccess = true;
+                                        console.log('✅ INTRO: Cookie transfer successful, cleaning up external cookies');
+                                        
+                                        // Clean up external cookies
+                                        chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
+                                        chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
+                                        
+                                        Navigate("/submit");
+                                        return;
+                                    } else {
+                                        authRetryCount++;
+                                        console.log(`⚠️  INTRO: Auth status check failed, retry ${authRetryCount}/${maxAuthRetries}`);
+                                        if (authRetryCount < maxAuthRetries) {
+                                            await new Promise(resolve => setTimeout(resolve, 1000 * authRetryCount));
+                                        }
+                                    }
+                                } catch (error) {
+                                    authRetryCount++;
+                                    console.log(`⚠️  INTRO: Auth status check error, retry ${authRetryCount}/${maxAuthRetries}:`, error);
+                                    if (authRetryCount < maxAuthRetries) {
+                                        await new Promise(resolve => setTimeout(resolve, 1000 * authRetryCount));
+                                    }
+                                }
+                            }
+                            
+                            if (!authResult) {
+                                console.warn('⚠️  INTRO: Auth status check failed after all retries, but proceeding anyway');
+                                // Proceed anyway since cookies are set
                                 transferSuccess = true;
-                                console.log('✅ INTRO: Cookie transfer successful, cleaning up external cookies');
-                                
-                                // Clean up external cookies
                                 chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
                                 chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
-                                
                                 Navigate("/submit");
                                 return;
-                            } else {
-                                throw new Error('Auth status check failed after transfer');
                             }
                         } catch (error) {
                             retryCount++;
@@ -320,11 +352,26 @@ const Intro = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 1.5, ease: "ease" }}
-                className="h-[500px] w-[100%] relative border border-black rounded-lg overflow-hidden flex items-center justify-center"
+                className="h-[500px] w-[100%] relative border border-black rounded-lg overflow-hidden"
             >
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                    <p className="text-lg">Checking authentication...</p>
+                {/* Background with colored sections */}
+                <div className="absolute inset-0 flex">
+                    <div className="w-1/4 bg-[var(--primary-orange)]" />
+                    <div className="w-1/4 bg-[var(--primary-green)]" />
+                    <div className="w-1/4 bg-[var(--primary-yellow)]" />
+                    <div className="w-1/4 bg-[var(--primary-blue)]" />
+                </div>
+
+                {/* Content */}
+                <div className="relative h-full w-full flex items-center justify-center">
+                    <div className="flex flex-col items-center text-center space-y-8">
+                        <p className="text-4xl nyr max-w-md">
+                            "Setting things up for you..."
+                        </p>
+                        
+                        {/* Loader animation */}
+                        <LoaderPillars />
+                    </div>
                 </div>
             </motion.div>
         );

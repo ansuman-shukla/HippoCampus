@@ -125,8 +125,16 @@ export default function InputForm({
           rows={2}
           value={extraNote}
           onChange={e => setExtraNote(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (NotesTitle.trim() !== "" && extraNote.trim() !== "") {
+                handleSubmit(e);
+              }
+            }
+          }}
           className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black scrollbar-hide"
-          placeholder="Write your extra note here..."
+          placeholder="Write your extra note here... (Press Enter to save)"
           disabled={isLoading || showOnlyOne}
         />
       </div>)}

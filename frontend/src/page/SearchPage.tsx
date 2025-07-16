@@ -77,13 +77,13 @@ export default function SearchPage({ Quote }: Props) {
         setIsLoading(true);
         chrome.runtime.sendMessage({ action: "searchAll" },
             (response) => {
-                if (response) {
+                setIsLoading(false);
+                
+                if (response && response.success) {
                     if (response.data?.detail === "Search failed: No documents found matching query") {
                         console.log("No documents found matching query");
                         Navigate("/response", { state: { data: [] } });
-                        setIsLoading(false);
                         return;
-
                     } else {
                         const linksArray = response.links.map((item: any) => ({
                             title: item.title,
@@ -105,11 +105,26 @@ export default function SearchPage({ Quote }: Props) {
                         const responseArray = [...linksArray, ...notesArray];
                         Navigate("/response", { state: {data: responseArray, Query: " ", isSearchAll:true} });
                     }
-
-
                 } else {
-                    setIsLoading(false);
-                    console.error("API Error:", response.error);
+                    console.error("SearchAll Error:", response?.error);
+                    
+                    // Handle authentication errors specifically
+                    if (response?.error && response.error.includes('Authentication required')) {
+                        console.log("Authentication error detected, redirecting to auth");
+                        // Redirect to auth page or show auth error
+                        window.location.href = '/auth';
+                        return;
+                    }
+                    
+                    // Handle other errors
+                    Navigate("/response", { 
+                        state: { 
+                            data: [], 
+                            Query: " ", 
+                            isSearchAll: true, 
+                            error: response?.error || "Failed to fetch data" 
+                        } 
+                    });
                 }
             }
         )
@@ -224,7 +239,11 @@ export default function SearchPage({ Quote }: Props) {
                 <div className="w-[95%] mx-auto flex justify-between items-center">
                     <Button text="HOME" handle={() => Navigate("/submit")} textColor="--primary-white"
                         IncMinWidth="118px" />
-                    <Button text="SHOW ALL" handle={handleSearchAll} textColor="--primary-white" />
+                    <Button 
+                        text={query.trim() ? "SEARCH" : "SHOW ALL"} 
+                        handle={query.trim() ? handleSearch : handleSearchAll} 
+                        textColor="--primary-white" 
+                    />
                 </div>
             </div>
         </>
