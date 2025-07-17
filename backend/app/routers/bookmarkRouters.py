@@ -58,7 +58,7 @@ async def save_link(
 
 
 @router.post("/search")
-@limiter.limit("20/minute") 
+@limiter.limit("15/minute")  # 15 bookmark search requests per minute per user
 async def search_links(
     search_request: SearchRequest,
     request: Request,
@@ -86,7 +86,7 @@ async def search_links(
 
 
 @router.delete("/delete")
-@limiter.limit("15/minute") 
+@limiter.limit("15/minute")  # 15 bookmark deletion requests per minute per user
 async def delete_link(
     doc_id_pincone: str,
     request: Request

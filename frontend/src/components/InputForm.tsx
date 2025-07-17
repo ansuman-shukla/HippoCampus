@@ -107,7 +107,7 @@ export default function InputForm({
               }
             }}
             className="w-full border-b border-black bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-1 scrollbar-hide"
-            placeholder="Add micro-note for better search results"
+            placeholder="Add micro-note for better search results (press Enter to save)"
             disabled={isLoading || showOnlyOne}
           />
         </div>
@@ -125,7 +125,7 @@ export default function InputForm({
           value={NotesTitle}
           onChange={e => setNotesTitle(e.target.value)}
           className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black scrollbar-hide"
-          placeholder="Write your note here..."
+          placeholder="Your title here..."
           disabled={isLoading || showOnlyOne}
         />
         <label className="block text-md font-SansMono400 text-[15px] ">Note:</label>
@@ -142,7 +142,7 @@ export default function InputForm({
             }
           }}
           className="w-full bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-3  border-b border-black scrollbar-hide"
-          placeholder="Write your extra note here... (Press Enter to save)"
+          placeholder="Write your note here... (Press Enter to save)"
           disabled={isLoading || showOnlyOne}
         />
       </div>)}

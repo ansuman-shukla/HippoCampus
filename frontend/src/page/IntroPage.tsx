@@ -162,6 +162,7 @@ const Intro = () => {
                         try {
                             // Set backend cookies
                             const apiUrl = import.meta.env.VITE_BACKEND_URL;
+                            const isSecure = apiUrl.startsWith('https://');
                             
                             await new Promise<void>((resolve, reject) => {
                                 chrome.cookies.set({
@@ -170,7 +171,7 @@ const Intro = () => {
                                     value: externalCookie.value,
                                     path: '/',
                                     domain: new URL(apiUrl).hostname,
-                                    secure: true,
+                                    secure: isSecure,
                                     sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
                                     expirationDate: Math.floor(Date.now() / 1000) + 3600 // 1 hour
                                 }, (cookie) => {
@@ -192,7 +193,7 @@ const Intro = () => {
                                         value: externalRefreshCookie.value,
                                         path: '/',
                                         domain: new URL(apiUrl).hostname,
-                                        secure: true,
+                                        secure: isSecure,
                                         sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
                                         expirationDate: Math.floor(Date.now() / 1000) + 604800 // 7 days
                                     }, (cookie) => {

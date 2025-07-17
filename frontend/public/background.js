@@ -1,6 +1,6 @@
 // Configuration - will be replaced during build
-// const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
-const BACKEND_URL = 'http://127.0.0.1:8000';
+const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
+// const BACKEND_URL = 'http://127.0.0.1:8000';
 const API_URL = '__VITE_API_URL__';
 
 // Multi-domain cookie cleanup function
@@ -9,7 +9,7 @@ async function clearAllAuthCookies() {
   
   // All domains where auth cookies might exist
   const domains = [
-    // 'https://hippocampus-puxn.onrender.com',
+    'https://hippocampus-puxn.onrender.com',
     'https://extension-auth.vercel.app',
     'http://127.0.0.1:8000',
     BACKEND_URL

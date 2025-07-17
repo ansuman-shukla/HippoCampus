@@ -12,12 +12,17 @@ This FastAPI application now includes comprehensive rate limiting using SlowAPI 
 ## Rate Limits Configuration
 
 ### Bookmark Operations
-- **POST `/links/save`**: 10 requests per minute per user
+- **POST `/links/save`**: 10 requests per minute per user ⬅️ **UPDATED**
 - **GET `/links/get`**: 20 requests per minute per user
+- **POST `/links/search`**: 15 requests per minute per user ⬅️ **NEW**
+- **DELETE `/links/delete`**: 15 requests per minute per user ⬅️ **NEW**
 
 ### Notes Operations  
 - **POST `/notes/`**: 15 requests per minute per user
 - **GET `/notes/`**: 20 requests per minute per user
+- **POST `/notes/search`**: 15 requests per minute per user ⬅️ **NEW**
+- **PUT `/notes/{note_id}`**: 15 requests per minute per user ⬅️ **NEW**
+- **DELETE `/notes/{note_id}`**: 15 requests per minute per user ⬅️ **NEW**
 
 ### Summary Operations
 - **POST `/summary/generate`**: 5 requests per day per user

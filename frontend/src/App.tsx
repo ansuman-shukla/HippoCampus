@@ -310,6 +310,7 @@ const AnimatedRoutes = () => {
   const setBackendCookies = async (accessToken: string, refreshToken?: string) => {
     try {
       const apiUrl = import.meta.env.VITE_BACKEND_URL;
+      const isSecure = apiUrl.startsWith('https://');
       
       // Set access token cookie and wait for completion
       await new Promise<void>((resolve, reject) => {
@@ -319,7 +320,7 @@ const AnimatedRoutes = () => {
           value: accessToken,
           path: '/',
           domain: new URL(import.meta.env.VITE_BACKEND_URL).hostname,
-          secure: true,
+          secure: isSecure,
           sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
           expirationDate: Math.floor(Date.now() / 1000) + 3600 // 1 hour
         }, (cookie) => {
@@ -343,7 +344,7 @@ const AnimatedRoutes = () => {
             value: refreshToken,
             path: '/',
             domain: new URL(import.meta.env.VITE_BACKEND_URL).hostname,
-            secure: true,
+            secure: isSecure,
             sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
             expirationDate: Math.floor(Date.now() / 1000) + 604800 // 7 days
           }, (cookie) => {

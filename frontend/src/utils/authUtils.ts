@@ -69,7 +69,7 @@ const clearAllAuthData = async (): Promise<void> => {
       const domains = [
         import.meta.env.VITE_BACKEND_URL,
         'https://extension-auth.vercel.app',
-        // 'https://hippocampus-puxn.onrender.com',
+        'https://hippocampus-puxn.onrender.com',
         'http://127.0.0.1:8000'
       ];
       

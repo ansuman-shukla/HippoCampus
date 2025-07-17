@@ -63,7 +63,7 @@ async def get_all_notes(request: Request):
         )
 
 @router.post("/")
-@limiter.limit("10/minute")  # 15 notes creation requests per minute per user
+@limiter.limit("15/minute")  # 15 notes creation requests per minute per user
 async def create_new_note(note: NoteSchema, request: Request):
     """
     Create a new note for a user with enhanced error handling.
@@ -106,6 +106,7 @@ async def create_new_note(note: NoteSchema, request: Request):
         )
 
 @router.put("/{note_id}")
+@limiter.limit("15/minute")  # 15 notes update requests per minute per user
 async def update_existing_note(note_id: str, note: dict, request: Request):
     """
     Update an existing note for a user.
@@ -117,7 +118,7 @@ async def update_existing_note(note_id: str, note: dict, request: Request):
     return await update_note(note_id, note, user_id)
 
 @router.post("/search")
-@limiter.limit("15/minute")  # 15 notes creation requests per minute per user
+@limiter.limit("15/minute")  # 15 notes search requests per minute per user
 async def search_notes_by_query(request: Request, query: str , filter: dict = None):
     """
     Search notes for a user based on a query string.
@@ -131,7 +132,7 @@ async def search_notes_by_query(request: Request, query: str , filter: dict = No
 
 
 @router.delete("/{note_id}")
-@limiter.limit("15/minute")  # 15 notes creation requests per minute per user
+@limiter.limit("15/minute")  # 15 notes deletion requests per minute per user
 async def delete_existing_note(request: Request, note_id: str):
     """
     Delete an existing note for a user.

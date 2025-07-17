@@ -254,6 +254,7 @@ export const useAuth = () => {
         // Set cookies for backend API domain with exact settings backend expects
         const apiUrl = import.meta.env.VITE_BACKEND_URL;
         const apiDomain = new URL(import.meta.env.VITE_BACKEND_URL).hostname;
+        const isSecure = apiUrl.startsWith('https://');
 
         // Access token cookie (expires in 1 hour, matching backend)
         await window.chrome.cookies.set({
@@ -262,7 +263,7 @@ export const useAuth = () => {
           value: accessToken,
           path: '/',
           domain: apiDomain,
-          secure: true,
+          secure: isSecure,
           sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
           httpOnly: false, // Chrome extension can't set httpOnly, backend middleware handles security
           expirationDate: Math.floor(Date.now() / 1000) + 3600 // 1 hour
@@ -276,7 +277,7 @@ export const useAuth = () => {
             value: refreshToken,
             path: '/',
             domain: apiDomain,
-            secure: true,
+            secure: isSecure,
             sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
             httpOnly: false, // Chrome extension can't set httpOnly, backend middleware handles security
             expirationDate: Math.floor(Date.now() / 1000) + 604800 // 7 days
@@ -301,7 +302,7 @@ export const useAuth = () => {
         const domains = [
           import.meta.env.VITE_BACKEND_URL,
           'https://extension-auth.vercel.app',
-          // 'https://hippocampus-puxn.onrender.com',
+          'https://hippocampus-puxn.onrender.com',
           'http://127.0.0.1:8000'
         ];
         
