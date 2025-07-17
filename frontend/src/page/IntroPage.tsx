@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import {motion} from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { useEffect, useState } from 'react';
+import { validateTokenWithBackend, clearAllAuthData } from '../utils/authUtils';
 
 const Intro = () => {
     const Navigate = useNavigate();
@@ -27,9 +28,17 @@ const Intro = () => {
                 });
 
                 if (backendCookie) {
-                    console.log('User already authenticated, navigating to submit page');
-                    Navigate("/submit");
-                    return;
+                    console.log('🔍 INTRO: Backend cookie found, validating token with backend');
+                    const isValid = await validateTokenWithBackend();
+                    if (isValid) {
+                        console.log('✅ INTRO: Backend authentication validated, navigating to submit page');
+                        Navigate("/submit");
+                        return;
+                    } else {
+                        console.log('❌ INTRO: Backend token invalid, clearing auth data and continuing with login flow');
+                        await clearAllAuthData();
+                        // Continue with external auth check below
+                    }
                 }
 
                 // Check for external auth cookies

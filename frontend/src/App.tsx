@@ -17,6 +17,7 @@ const pageVariants = {
 
 import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
+import { validateTokenWithBackend, clearAllAuthData } from "./utils/authUtils";
 
 // Extend Window interface to include our custom property
 declare global {
@@ -83,9 +84,17 @@ const AnimatedRoutes = () => {
       });
 
       if (backendCookie) {
-        console.log('✅ APP: Backend authentication already exists, navigating to submit');
-        Navigate("/submit");
-        return;
+        console.log('🔍 APP: Backend cookie found, validating token with backend');
+        const isValid = await validateTokenWithBackend();
+        if (isValid) {
+          console.log('✅ APP: Backend authentication validated, navigating to submit');
+          Navigate("/submit");
+          return;
+        } else {
+          console.log('❌ APP: Backend token invalid, clearing auth data and continuing with login flow');
+          await clearAllAuthData();
+          // Continue with external auth check below
+        }
       }
 
       // If cookies are not found, try to get tokens from localStorage via content script or direct injection

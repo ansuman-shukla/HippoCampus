@@ -433,7 +433,9 @@ async def authorisation_middleware(request: Request, call_next):
                 if error_response.status_code == 401 and "session_expired" in str(error_response.body):
                     logger.warning(f"🚫 AUTH MIDDLEWARE: Session expired - clearing all auth cookies")
                     # Clear all authentication cookies to force fresh login
+                    # Ensure cookies are cleared on the response before returning
                     clear_all_auth_cookies(error_response)
+                    logger.info(f"🚫 AUTH MIDDLEWARE: Cookies cleared, returning 401 response")
                 return error_response
             
             logger.info(f"✅ AUTH MIDDLEWARE: Token refresh successful")

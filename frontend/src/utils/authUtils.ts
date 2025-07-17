@@ -38,7 +38,7 @@ const getApiBaseUrl = (): string => {
 /**
  * Clear all authentication data from local storage and cookies (comprehensive cleanup)
  */
-const clearAllAuthData = async (): Promise<void> => {
+export const clearAllAuthData = async (): Promise<void> => {
   console.log('🧹 AUTH CLEANUP: Starting comprehensive auth data cleanup');
   
   // Clear localStorage items
@@ -69,7 +69,7 @@ const clearAllAuthData = async (): Promise<void> => {
       const domains = [
         import.meta.env.VITE_BACKEND_URL,
         'https://extension-auth.vercel.app',
-        'https://hippocampus-puxn.onrender.com',
+        'https://hippocampus-1.onrender.com',
         'http://127.0.0.1:8000'
       ];
       
@@ -114,6 +114,31 @@ export const makeAuthenticatedRequest = async (
 ): Promise<Response> => {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
+  
+  // Proactive token expiry detection for extension environment
+  if (isExtension()) {
+    try {
+      const accessToken = await new Promise<string | null>((resolve) => {
+        chrome.cookies.get({
+          url: import.meta.env.VITE_BACKEND_URL,
+          name: 'access_token',
+        }, (cookie) => {
+          resolve(cookie?.value || null);
+        });
+      });
+
+      if (accessToken && isTokenExpired(accessToken)) {
+        console.log('⚠️  AUTH REQUEST: Token expired, clearing auth data and redirecting');
+        await clearAllAuthData();
+        window.location.href = '/auth';
+        throw new Error('Token expired. Please log in again.');
+      }
+    } catch (error) {
+      // If we can't check the token, proceed with the request
+      // Backend will handle invalid tokens appropriately
+      console.log('⚠️  AUTH REQUEST: Could not check token expiry, proceeding with request');
+    }
+  }
   
   console.log(`🔐 AUTH REQUEST: Starting authenticated request`);
   console.log(`   ├─ Endpoint: ${endpoint}`);
@@ -557,6 +582,51 @@ export const refreshToken = async (): Promise<AuthResponse> => {
       success: false,
       error: 'Token refresh failed',
     };
+  }
+};
+
+/**
+ * Check if a JWT token is expired
+ */
+export const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true; // If we can't parse the token, consider it expired
+  }
+};
+
+/**
+ * Validate token with backend by making a lightweight auth check
+ */
+export const validateTokenWithBackend = async (): Promise<boolean> => {
+  try {
+    console.log('🔍 AUTH VALIDATION: Checking token validity with backend');
+    
+    // Make a lightweight request to validate authentication
+    const response = await fetch(`${getApiBaseUrl()}/auth/validate`, {
+      method: 'GET',
+      credentials: 'include', // Include cookies
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const isValid = response.ok;
+    console.log(`✅ AUTH VALIDATION: Token validation result: ${isValid ? 'VALID' : 'INVALID'}`);
+    
+    if (!isValid) {
+      console.log(`   └─ Status: ${response.status} ${response.statusText}`);
+      // If token is invalid, clear auth data
+      await clearAllAuthData();
+    }
+    
+    return isValid;
+  } catch (error) {
+    console.error('❌ AUTH VALIDATION: Token validation failed:', error);
+    await clearAllAuthData();
+    return false;
   }
 };
 

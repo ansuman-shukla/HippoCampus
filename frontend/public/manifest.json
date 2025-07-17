@@ -18,7 +18,7 @@
     "http://localhost:5173/*",
     "https://magical-famous-emu.ngrok-free.app/*",
     "https://extension-auth.vercel.app/*",
-    "https://hippocampus-puxn.onrender.com/*",
+    "https://hippocampus-1.onrender.com//*",
     "http://127.0.0.1:8000/*",
     "<all_urls>"
   ],

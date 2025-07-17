@@ -1,5 +1,5 @@
 // Configuration - will be replaced during build
-const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
+const BACKEND_URL = 'https://hippocampus-1.onrender.com';
 // const BACKEND_URL = 'http://127.0.0.1:8000';
 const API_URL = '__VITE_API_URL__';
 
@@ -9,7 +9,7 @@ async function clearAllAuthCookies() {
   
   // All domains where auth cookies might exist
   const domains = [
-    'https://hippocampus-puxn.onrender.com',
+    'https://hippocampus-1.onrender.com',
     'https://extension-auth.vercel.app',
     'http://127.0.0.1:8000',
     BACKEND_URL
@@ -40,6 +40,32 @@ async function clearAllAuthCookies() {
   }
   
   console.log('✅ BACKGROUND: Multi-domain cookie cleanup completed');
+}
+
+// Session expiry notification function
+async function notifySessionExpired() {
+  console.log('🚨 BACKGROUND: Session expired, notifying all extension tabs');
+  
+  try {
+    // Get all tabs and send session expired message
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, { 
+          action: "sessionExpired",
+          message: "Session expired. Please log in again."
+        });
+        console.log(`   ├─ Notified tab ${tab.id}: ${tab.url}`);
+      } catch (error) {
+        // Tab might not have content script loaded, ignore
+        console.log(`   ├─ Could not notify tab ${tab.id} (no content script)`);
+      }
+    }
+    
+    console.log('✅ BACKGROUND: Session expiry notifications sent');
+  } catch (error) {
+    console.error('❌ BACKGROUND: Failed to send session expiry notifications:', error);
+  }
 }
 
 chrome.action.onClicked.addListener((tab) => {
@@ -92,6 +118,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
                 continue;
               } else {
+                // Check if this is a persistent 401 error (session expired)
+                if (response.status === 401) {
+                  console.log('🚨 BACKGROUND: Persistent 401 error detected, session expired');
+                  await notifySessionExpired();
+                }
                 throw new Error(`${endpoint} fetch failed: ${response.status}`);
               }
             } catch (error) {
@@ -168,6 +199,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               continue;
             } else {
               // Handle HTTP error responses
+              if (response.status === 401) {
+                console.log('🚨 BACKGROUND: Persistent 401 error in search, session expired');
+                await notifySessionExpired();
+              }
               const errorData = await response.json().catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
               throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
@@ -230,6 +265,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
+              if (response.status === 401) {
+                console.log('🚨 BACKGROUND: Persistent 401 error in submit, session expired');
+                await notifySessionExpired();
+              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
@@ -290,6 +329,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
+              if (response.status === 401) {
+                console.log('🚨 BACKGROUND: Persistent 401 error in SaveNotes, session expired');
+                await notifySessionExpired();
+              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
@@ -345,6 +388,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
+              if (response.status === 401) {
+                console.log('🚨 BACKGROUND: Persistent 401 error in GetQuotes, session expired');
+                await notifySessionExpired();
+              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
@@ -400,6 +447,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
+              if (response.status === 401) {
+                console.log('🚨 BACKGROUND: Persistent 401 error in Delete, session expired');
+                await notifySessionExpired();
+              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
@@ -455,6 +506,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
+              if (response.status === 401) {
+                console.log('🚨 BACKGROUND: Persistent 401 error in DeleteNote, session expired');
+                await notifySessionExpired();
+              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
@@ -512,6 +567,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
+              if (response.status === 401) {
+                console.log('🚨 BACKGROUND: Persistent 401 error in GenerateSummary, session expired');
+                await notifySessionExpired();
+              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {

@@ -38,10 +38,10 @@ export const useAuth = () => {
 
   // Check authentication status from backend (single source of truth)
   // Backend middleware handles token validation, refresh, and user management automatically
-  const checkAuthStatus = useCallback(async () => {
-    // Prevent multiple simultaneous auth checks
-    if (authState.isLoading) {
-      console.log('Auth check already in progress, skipping');
+  const checkAuthStatus = useCallback(async (forceCheck: boolean = false) => {
+    // Prevent multiple simultaneous auth checks unless forced
+    if (authState.isLoading && !forceCheck) {
+      console.log('Auth check already in progress, skipping (use forceCheck=true to override)');
       return false;
     }
 
@@ -302,7 +302,7 @@ export const useAuth = () => {
         const domains = [
           import.meta.env.VITE_BACKEND_URL,
           'https://extension-auth.vercel.app',
-          'https://hippocampus-puxn.onrender.com',
+          'https://hippocampus-1.onrender.com',
           'http://127.0.0.1:8000'
         ];
         
