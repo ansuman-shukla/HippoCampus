@@ -45,6 +45,28 @@ const AnimatedRoutes = () => {
   const [authCheckInProgress, setAuthCheckInProgress] = useState(false);
   const [lastAuthCheck, setLastAuthCheck] = useState(0);
 
+  // Keyboard shortcut handler for Alt+X (when extension is already open)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Alt+X combination
+      if (event.altKey && event.key.toLowerCase() === 'x') {
+        event.preventDefault(); // Prevent default browser action for Alt+X
+        console.log('🔍 APP: Alt+X shortcut triggered, navigating to search page');
+        
+        // Navigate to search page (extension is already open)
+        Navigate("/search");
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup function to remove event listener
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [Navigate]);
+
   // Helper function to validate authentication with backend
   const validateAuthenticationWithBackend = async (): Promise<boolean> => {
     try {
