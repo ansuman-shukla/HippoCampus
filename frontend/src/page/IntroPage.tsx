@@ -6,18 +6,30 @@ import { useNavigate } from 'react-router-dom';
 import {motion} from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { useEffect, useState } from 'react';
-import { validateTokenWithBackend, clearAllAuthData } from '../utils/authUtils';
 
 const Intro = () => {
     const Navigate = useNavigate();
     const { checkAuthStatus } = useAuth();
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
+    // Helper function to validate authentication with backend
+    const validateAuthenticationWithBackend = async (): Promise<boolean> => {
+        try {
+            console.log('🔍 INTRO: Validating authentication with backend...');
+            const authResult = await checkAuthStatus();
+            console.log(`📊 INTRO: Auth validation result: ${authResult}`);
+            return authResult;
+        } catch (error) {
+            console.error('❌ INTRO: Auth validation failed:', error);
+            return false;
+        }
+    };
+
     // Check if user is already authenticated on component mount
     useEffect(() => {
         const checkExistingAuth = async () => {
             try {
-                // Check backend cookies first
+                // Check backend cookies first and validate them
                 const backendCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
                     chrome.cookies.get({
                         url: import.meta.env.VITE_BACKEND_URL,
@@ -28,16 +40,16 @@ const Intro = () => {
                 });
 
                 if (backendCookie) {
-                    console.log('🔍 INTRO: Backend cookie found, validating token with backend');
-                    const isValid = await validateTokenWithBackend();
-                    if (isValid) {
-                        console.log('✅ INTRO: Backend authentication validated, navigating to submit page');
+                    console.log('🔍 INTRO: Backend cookies found, validating authentication...');
+                    const isValidAuth = await validateAuthenticationWithBackend();
+                    
+                    if (isValidAuth) {
+                        console.log('✅ INTRO: Authentication validated successfully, navigating to submit page');
                         Navigate("/submit");
                         return;
                     } else {
-                        console.log('❌ INTRO: Backend token invalid, clearing auth data and continuing with login flow');
-                        await clearAllAuthData();
-                        // Continue with external auth check below
+                        console.log('❌ INTRO: Authentication validation failed, cookies may be expired');
+                        // Don't navigate, continue with the flow to check other auth methods
                     }
                 }
 
@@ -113,7 +125,7 @@ const Intro = () => {
                 }
             }
 
-            // First check if we already have backend tokens
+            // First check if we already have backend tokens and validate them
             const backendCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
                 chrome.cookies.get({
                     url: import.meta.env.VITE_BACKEND_URL,
@@ -124,14 +136,15 @@ const Intro = () => {
             });
 
             if (backendCookie) {
-                console.log('✅ INTRO: Backend auth found, verifying and navigating to submit');
-                // Verify the auth status to ensure localStorage is populated
-                const authResult = await checkAuthStatus();
-                if (authResult) {
+                console.log('🔍 INTRO: Backend cookies found in handleAuth, validating authentication...');
+                const isValidAuth = await validateAuthenticationWithBackend();
+                
+                if (isValidAuth) {
+                    console.log('✅ INTRO: Authentication validated in handleAuth, navigating to submit');
                     Navigate("/submit");
                     return;
                 } else {
-                    console.log('⚠️  INTRO: Backend cookie exists but auth status check failed');
+                    console.log('❌ INTRO: Authentication validation failed in handleAuth, continuing with external auth check');
                 }
             }
 

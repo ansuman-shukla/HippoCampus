@@ -17,7 +17,6 @@ const pageVariants = {
 
 import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
-import { validateTokenWithBackend, clearAllAuthData } from "./utils/authUtils";
 
 // Extend Window interface to include our custom property
 declare global {
@@ -46,6 +45,19 @@ const AnimatedRoutes = () => {
   const [authCheckInProgress, setAuthCheckInProgress] = useState(false);
   const [lastAuthCheck, setLastAuthCheck] = useState(0);
 
+  // Helper function to validate authentication with backend
+  const validateAuthenticationWithBackend = async (): Promise<boolean> => {
+    try {
+      console.log('🔍 APP: Validating authentication with backend...');
+      const authResult = await checkAuthStatus();
+      console.log(`📊 APP: Auth validation result: ${authResult}`);
+      return authResult;
+    } catch (error) {
+      console.error('❌ APP: Auth validation failed:', error);
+      return false;
+    }
+  };
+
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
     // Prevent multiple simultaneous auth checks
@@ -73,7 +85,7 @@ const AnimatedRoutes = () => {
       const accessToken = cookies.find((cookie) => cookie.name === "access_token")?.value;
       const refreshToken = cookies.find((cookie) => cookie.name === "refresh_token")?.value;
 
-      // First check if we already have valid backend cookies
+      // First check if we already have backend cookies and validate them
       const backendCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
         chrome.cookies.get({
           url: import.meta.env.VITE_BACKEND_URL,
@@ -84,16 +96,16 @@ const AnimatedRoutes = () => {
       });
 
       if (backendCookie) {
-        console.log('🔍 APP: Backend cookie found, validating token with backend');
-        const isValid = await validateTokenWithBackend();
-        if (isValid) {
-          console.log('✅ APP: Backend authentication validated, navigating to submit');
+        console.log('🔍 APP: Backend cookies found, validating authentication...');
+        const isValidAuth = await validateAuthenticationWithBackend();
+        
+        if (isValidAuth) {
+          console.log('✅ APP: Backend authentication validated successfully, navigating to submit');
           Navigate("/submit");
           return;
         } else {
-          console.log('❌ APP: Backend token invalid, clearing auth data and continuing with login flow');
-          await clearAllAuthData();
-          // Continue with external auth check below
+          console.log('❌ APP: Backend authentication validation failed, cookies may be expired');
+          // Don't navigate, let the flow continue to check external auth or redirect to auth page
         }
       }
 
@@ -420,16 +432,23 @@ const AnimatedRoutes = () => {
 
 
       try {
-        // Check if user is authenticated via backend cookies
+        // Check if user is authenticated via backend cookies and validate them
         const cookie = await chrome.cookies.get({
           url: import.meta.env.VITE_BACKEND_URL,
           name: 'access_token',
         });
 
         if (cookie && location.pathname === "/") {
-          // User is authenticated, ensure localStorage is populated before navigation
-          await checkAuthStatus();
-          Navigate("/submit");
+          console.log('🔍 APP: Backend cookies found in handleAuthFlow, validating authentication...');
+          const isValidAuth = await validateAuthenticationWithBackend();
+          
+          if (isValidAuth) {
+            console.log('✅ APP: Authentication validated in handleAuthFlow, navigating to submit');
+            Navigate("/submit");
+          } else {
+            console.log('❌ APP: Authentication validation failed in handleAuthFlow, staying on intro page');
+            // Don't navigate if auth validation fails
+          }
         }
 
         // Load quotes from localStorage or fetch from backend
@@ -481,13 +500,43 @@ const AnimatedRoutes = () => {
 
     handleAuthFlow();
 
+    // Enhanced cookie change monitoring for session management
     const handleCookieChange = (changeInfo: chrome.cookies.CookieChangeInfo) => {
-      if (changeInfo.cookie.name === "access_token") {
+      if (changeInfo.cookie.name === "access_token" && 
+          changeInfo.cookie.domain.includes(new URL(import.meta.env.VITE_BACKEND_URL).hostname)) {
+        
+        if (changeInfo.removed) {
+          console.log('🚫 APP: Backend access token was removed, checking if we need to redirect to auth');
+          
+          // Check if we're on a protected page and should redirect to intro/auth
+          if (location.pathname === "/submit" || location.pathname === "/search" || location.pathname === "/response") {
+            console.log('🔄 APP: User was on protected page, redirecting to intro for re-authentication');
+            Navigate("/");
+          }
+        } else {
+          console.log('🔑 APP: Backend access token detected, user may have authenticated');
+          // Token was added, but don't auto-navigate - let existing auth flow handle it
+        }
+      }
+    };
+
+    // Listen for background script auth failure notifications
+    const handleBackgroundMessage = (message: any, _sender: any, sendResponse: any) => {
+      if (message.action === "authenticationFailed") {
+        console.log('🚫 APP: Received authentication failure notification from background script');
+        console.log('🔄 APP: Redirecting to intro page for re-authentication');
+        Navigate("/");
+        sendResponse({ received: true });
       }
     };
 
     chrome.cookies.onChanged.addListener(handleCookieChange);
-    return () => chrome.cookies.onChanged.removeListener(handleCookieChange);
+    chrome.runtime.onMessage.addListener(handleBackgroundMessage);
+    
+    return () => {
+      chrome.cookies.onChanged.removeListener(handleCookieChange);
+      chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
+    };
   }, []);
 
 

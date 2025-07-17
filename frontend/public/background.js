@@ -3,6 +3,80 @@ const BACKEND_URL = 'https://hippocampus-1.onrender.com';
 // const BACKEND_URL = 'http://127.0.0.1:8000';
 const API_URL = '__VITE_API_URL__';
 
+// Helper function to notify frontend of authentication failures
+async function notifyAuthenticationFailure(reason = 'Authentication failed') {
+  console.log('🚫 BACKGROUND: Notifying frontend of authentication failure');
+  try {
+    // Get all extension tabs/windows
+    const tabs = await chrome.tabs.query({});
+    
+    // Send message to all extension contexts
+    for (const tab of tabs) {
+      if (tab.url && tab.url.includes('chrome-extension://')) {
+        try {
+          await chrome.tabs.sendMessage(tab.id, { 
+            action: "authenticationFailed", 
+            reason: reason 
+          });
+          console.log(`   ├─ Notified tab ${tab.id} of auth failure`);
+        } catch (error) {
+          // Ignore errors if tab is not ready to receive messages
+          console.log(`   ├─ Could not notify tab ${tab.id}: ${error.message}`);
+        }
+      }
+    }
+    
+    console.log('✅ BACKGROUND: Authentication failure notifications sent');
+  } catch (error) {
+    console.error('❌ BACKGROUND: Failed to notify frontend of auth failure:', error);
+  }
+}
+
+// Generic helper function for making API calls with auth failure detection
+async function makeAuthenticatedRequest(url, options, actionName, maxRetries = 3) {
+  let retryCount = 0;
+  let lastStatusCode = null;
+  
+  while (retryCount < maxRetries) {
+    try {
+      const response = await fetch(url, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        ...options
+      });
+      
+      lastStatusCode = response.status;
+      
+      if (response.ok) {
+        console.log(`✅ BACKGROUND: ${actionName} successful`);
+        return await response.json();
+      } else if (response.status === 401 && retryCount < maxRetries - 1) {
+        console.log(`⚠️  BACKGROUND: ${actionName} got 401, retry ${retryCount + 1}/${maxRetries}`);
+        retryCount++;
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        continue;
+      } else {
+        throw new Error(`${actionName} failed: ${response.status}`);
+      }
+    } catch (error) {
+      if (retryCount < maxRetries - 1) {
+        console.log(`⚠️  BACKGROUND: ${actionName} error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
+        retryCount++;
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      } else {
+        // Check if all retries failed due to authentication issues
+        if (lastStatusCode === 401 || error.message.includes('401')) {
+          console.log(`🚫 BACKGROUND: ${actionName} failed with authentication error after all retries`);
+          notifyAuthenticationFailure(`${actionName} authentication failed after ${maxRetries} retries`);
+        }
+        throw new Error(`${actionName} failed after ${maxRetries} retries: ${error.message}`);
+      }
+    }
+  }
+}
+
 // Multi-domain cookie cleanup function
 async function clearAllAuthCookies() {
   console.log('🧹 BACKGROUND: Starting comprehensive cookie cleanup across all domains');
@@ -42,32 +116,6 @@ async function clearAllAuthCookies() {
   console.log('✅ BACKGROUND: Multi-domain cookie cleanup completed');
 }
 
-// Session expiry notification function
-async function notifySessionExpired() {
-  console.log('🚨 BACKGROUND: Session expired, notifying all extension tabs');
-  
-  try {
-    // Get all tabs and send session expired message
-    const tabs = await chrome.tabs.query({});
-    for (const tab of tabs) {
-      try {
-        await chrome.tabs.sendMessage(tab.id, { 
-          action: "sessionExpired",
-          message: "Session expired. Please log in again."
-        });
-        console.log(`   ├─ Notified tab ${tab.id}: ${tab.url}`);
-      } catch (error) {
-        // Tab might not have content script loaded, ignore
-        console.log(`   ├─ Could not notify tab ${tab.id} (no content script)`);
-      }
-    }
-    
-    console.log('✅ BACKGROUND: Session expiry notifications sent');
-  } catch (error) {
-    console.error('❌ BACKGROUND: Failed to send session expiry notifications:', error);
-  }
-}
-
 chrome.action.onClicked.addListener((tab) => {
   chrome.scripting.insertCSS({
     target: { tabId: tab.id },
@@ -92,56 +140,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         console.log('🔍 BACKGROUND: Starting searchAll request');
         
-        // Fetch links and notes in parallel with retry logic
-        const maxRetries = 3;
-        
-        // Helper function to fetch data with retry logic
-        async function fetchWithRetry(url, endpoint) {
-          let retryCount = 0;
-          
-          while (retryCount < maxRetries) {
-            try {
-              const response = await fetch(url, {
-                method: 'GET',
-                credentials: 'include',
-                headers: { 
-                  'Content-Type': 'application/json'
-                }
-              });
-              
-              if (response.ok) {
-                console.log(`✅ BACKGROUND: ${endpoint} fetch successful`);
-                return await response.json();
-              } else if (response.status === 401 && retryCount < maxRetries - 1) {
-                console.log(`⚠️  BACKGROUND: ${endpoint} fetch got 401, retry ${retryCount + 1}/${maxRetries}`);
-                retryCount++;
-                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
-                continue;
-              } else {
-                // Check if this is a persistent 401 error (session expired)
-                if (response.status === 401) {
-                  console.log('🚨 BACKGROUND: Persistent 401 error detected, session expired');
-                  await notifySessionExpired();
-                }
-                throw new Error(`${endpoint} fetch failed: ${response.status}`);
-              }
-            } catch (error) {
-              if (retryCount < maxRetries - 1) {
-                console.log(`⚠️  BACKGROUND: ${endpoint} fetch error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
-                retryCount++;
-                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-              } else {
-                throw new Error(`${endpoint} fetch failed after ${maxRetries} retries: ${error.message}`);
-              }
-            }
-          }
-        }
-        
-        // Make both API calls in parallel
+        // Make both API calls in parallel using the new helper function
         console.log('🚀 BACKGROUND: Starting parallel fetch for links and notes');
         const [linksData, notesData] = await Promise.all([
-          fetchWithRetry(`${BACKEND_URL}/links/get`, 'Links'),
-          fetchWithRetry(`${BACKEND_URL}/notes/`, 'Notes')
+          makeAuthenticatedRequest(`${BACKEND_URL}/links/get`, { method: 'GET' }, 'Links fetch'),
+          makeAuthenticatedRequest(`${BACKEND_URL}/notes/`, { method: 'GET' }, 'Notes fetch')
         ]);
         
         console.log('📦 BACKGROUND: Links data received');
@@ -172,56 +175,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           requestBody.filter = { type: { $eq: message.type } };
         }
 
-        const fetchOptions = {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
+        const data = await makeAuthenticatedRequest(
+          `${BACKEND_URL}/links/search`,
+          {
+            method: 'POST',
+            body: JSON.stringify(requestBody)
           },
-          body: JSON.stringify(requestBody)
-        };
-
-        let response;
-        let retryCount = 0;
-        const maxRetries = 3;
-        
-        while (retryCount < maxRetries) {
-          try {
-            response = await fetch(`${BACKEND_URL}/links/search`, fetchOptions);
-            
-            if (response.ok) {
-              console.log('✅ BACKGROUND: Search successful');
-              break; // Success, exit retry loop
-            } else if (response.status === 401 && retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: Search got 401, retry ${retryCount + 1}/${maxRetries}`);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-              continue;
-            } else {
-              // Handle HTTP error responses
-              if (response.status === 401) {
-                console.log('🚨 BACKGROUND: Persistent 401 error in search, session expired');
-                await notifySessionExpired();
-              }
-              const errorData = await response.json().catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
-              throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-            }
-          } catch (error) {
-            if (retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: Search error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-            } else {
-              throw error;
-            }
-          }
-        }
-        
-        if (!response || !response.ok) {
-          throw new Error(`Search failed after ${maxRetries} retries`);
-        }
-        
-        const data = await response.json();
+          'Search'
+        );
         console.log("✅ BACKGROUND: Search response received:", data);
         sendResponse({ success: true, data });
       } catch (error) {
@@ -239,54 +200,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         console.log('📤 BACKGROUND: Starting submit request');
         
-        let response;
-        let retryCount = 0;
-        const maxRetries = 3;
+        const data = await makeAuthenticatedRequest(
+          `${BACKEND_URL}/links/save`,
+          {
+            method: 'POST',
+            body: JSON.stringify(message.data)
+          },
+          'Submit'
+        );
         
-        while (retryCount < maxRetries) {
-          try {
-            response = await fetch(`${BACKEND_URL}/links/save`, {
-              method: 'POST',
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(message.data)
-            });
-            
-            console.log(`📤 BACKGROUND: Submit response status: ${response.status}`);
-            
-            if (response.ok) {
-              console.log('✅ BACKGROUND: Submit successful');
-              break; // Success, exit retry loop
-            } else if (response.status === 401 && retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: Submit got 401, retry ${retryCount + 1}/${maxRetries}`);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-              continue;
-            } else {
-              if (response.status === 401) {
-                console.log('🚨 BACKGROUND: Persistent 401 error in submit, session expired');
-                await notifySessionExpired();
-              }
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-          } catch (error) {
-            if (retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: Submit error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-            } else {
-              throw error;
-            }
-          }
-        }
-        
-        if (!response || !response.ok) {
-          throw new Error(`Submit failed after ${maxRetries} retries`);
-        }
-        
-        const data = await response.json();
         console.log("✅ BACKGROUND: Submit success:", data);
         sendResponse({ success: true, data });
       } catch (error) {
@@ -329,10 +251,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
-              if (response.status === 401) {
-                console.log('🚨 BACKGROUND: Persistent 401 error in SaveNotes, session expired');
-                await notifySessionExpired();
-              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
@@ -368,48 +286,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         console.log('💬 BACKGROUND: Starting getQuotes request');
         
-        let response;
-        let retryCount = 0;
-        const maxRetries = 3;
+        const data = await makeAuthenticatedRequest(
+          `${BACKEND_URL}/quotes/`,
+          { method: 'GET' },
+          'GetQuotes'
+        );
         
-        while (retryCount < maxRetries) {
-          try {
-            response = await fetch(`${BACKEND_URL}/quotes/`, {
-              method: 'GET',
-              credentials: 'include'
-            });
-            
-            if (response.ok) {
-              console.log('✅ BACKGROUND: GetQuotes successful');
-              break; // Success, exit retry loop
-            } else if (response.status === 401 && retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: GetQuotes got 401, retry ${retryCount + 1}/${maxRetries}`);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-              continue;
-            } else {
-              if (response.status === 401) {
-                console.log('🚨 BACKGROUND: Persistent 401 error in GetQuotes, session expired');
-                await notifySessionExpired();
-              }
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-          } catch (error) {
-            if (retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: GetQuotes error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-            } else {
-              throw error;
-            }
-          }
-        }
-        
-        if (!response || !response.ok) {
-          throw new Error(`GetQuotes failed after ${maxRetries} retries`);
-        }
-        
-        const data = await response.json();
         console.log('✅ BACKGROUND: GetQuotes response received');
         sendResponse({ success: true, data });
       } catch (error) {
@@ -447,10 +329,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
-              if (response.status === 401) {
-                console.log('🚨 BACKGROUND: Persistent 401 error in Delete, session expired');
-                await notifySessionExpired();
-              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
@@ -506,10 +384,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
-              if (response.status === 401) {
-                console.log('🚨 BACKGROUND: Persistent 401 error in DeleteNote, session expired');
-                await notifySessionExpired();
-              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
@@ -567,10 +441,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
               continue;
             } else {
-              if (response.status === 401) {
-                console.log('🚨 BACKGROUND: Persistent 401 error in GenerateSummary, session expired');
-                await notifySessionExpired();
-              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {

@@ -108,11 +108,21 @@ export default function SearchPage({ Quote }: Props) {
                 } else {
                     console.error("SearchAll Error:", response?.error);
                     
-                    // Handle authentication errors specifically
-                    if (response?.error && response.error.includes('Authentication required')) {
-                        console.log("Authentication error detected, redirecting to auth");
-                        // Redirect to auth page or show auth error
-                        window.location.href = '/auth';
+                    // Enhanced authentication error detection
+                    const errorMessage = response?.error || '';
+                    const isAuthError = (
+                        errorMessage.includes('Authentication required') ||
+                        errorMessage.includes('authentication failed') ||
+                        errorMessage.includes('fetch failed: 401') ||
+                        errorMessage.includes('401') ||
+                        errorMessage.includes('Session expired') ||
+                        errorMessage.includes('Please log in again') ||
+                        errorMessage.includes('Invalid Refresh Token')
+                    );
+                    
+                    if (isAuthError) {
+                        console.log("🚫 SEARCH: Authentication error detected, redirecting to intro page");
+                        Navigate("/");
                         return;
                     }
                     

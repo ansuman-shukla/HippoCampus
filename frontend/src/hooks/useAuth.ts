@@ -38,10 +38,10 @@ export const useAuth = () => {
 
   // Check authentication status from backend (single source of truth)
   // Backend middleware handles token validation, refresh, and user management automatically
-  const checkAuthStatus = useCallback(async (forceCheck: boolean = false) => {
-    // Prevent multiple simultaneous auth checks unless forced
-    if (authState.isLoading && !forceCheck) {
-      console.log('Auth check already in progress, skipping (use forceCheck=true to override)');
+  const checkAuthStatus = useCallback(async () => {
+    // Prevent multiple simultaneous auth checks
+    if (authState.isLoading) {
+      console.log('Auth check already in progress, skipping');
       return false;
     }
 
@@ -337,7 +337,7 @@ export const useAuth = () => {
     }
   };
 
-  // Check for existing auth on mount and listen for Supabase auth changes
+  // Check for existing auth on mount and listen for auth changes
   useEffect(() => {
     const initAuth = async () => {
       // Always check auth status with backend (backend is source of truth)
@@ -369,8 +369,57 @@ export const useAuth = () => {
       }
     );
 
+    // Enhanced session monitoring for extension environment
+    let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = null;
+    let messageListener: ((message: any, sender: any, sendResponse: any) => void) | null = null;
+
+    if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
+      // Monitor backend cookie changes
+      cookieChangeListener = (changeInfo: chrome.cookies.CookieChangeInfo) => {
+        if (changeInfo.cookie.name === "access_token" && 
+            changeInfo.cookie.domain.includes(new URL(import.meta.env.VITE_BACKEND_URL).hostname)) {
+          
+          if (changeInfo.removed) {
+            console.log('🚫 USE_AUTH: Backend access token was removed, updating auth state');
+            setAuthState(prev => ({
+              ...prev,
+              user: null,
+              isAuthenticated: false,
+              error: 'Session expired'
+            }));
+          }
+        }
+      };
+
+      // Listen for background script auth failure notifications
+      messageListener = (message: any, _sender: any, sendResponse: any) => {
+        if (message.action === "authenticationFailed") {
+          console.log('🚫 USE_AUTH: Received authentication failure notification');
+          setAuthState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+            error: 'Authentication failed. Please log in again.',
+            errorType: 'session_expired'
+          });
+          sendResponse({ received: true });
+        }
+      };
+
+      chrome.cookies.onChanged.addListener(cookieChangeListener);
+      chrome.runtime.onMessage.addListener(messageListener);
+    }
+
     return () => {
       subscription.unsubscribe();
+      
+      // Clean up extension-specific listeners
+      if (cookieChangeListener && chrome.cookies?.onChanged) {
+        chrome.cookies.onChanged.removeListener(cookieChangeListener);
+      }
+      if (messageListener && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(messageListener);
+      }
     };
   }, [checkAuthStatus]);
 
