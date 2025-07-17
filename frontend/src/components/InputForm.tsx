@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Button from "./Button";
 import LoaderPillars from "./LoaderPillars";
 import { BsChevronDoubleDown } from "react-icons/bs";
@@ -45,8 +45,33 @@ export default function InputForm({
   setCurrentTab
 }: Props) {
   const [showNotes, setShowNotes] = useState(false);
+  const notesTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  const titleTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  const bookmarkNoteRef = useRef<HTMLTextAreaElement>(null);
   
+  // Auto-focus on bookmark note area when extension opens (default behavior)
+  useEffect(() => {
+    if (!showNotes && bookmarkNoteRef.current && !isLoading && !showOnlyOne) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        bookmarkNoteRef.current?.focus();
+      }, 200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showNotes, isLoading, showOnlyOne]);
   
+  // Focus the notes text area when notes tab becomes active
+  useEffect(() => {
+    if (showNotes && notesTextAreaRef.current && !isLoading && !showOnlyOne) {
+      // Small delay to ensure the transition animation completes
+      const timer = setTimeout(() => {
+        notesTextAreaRef.current?.focus();
+      }, 200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showNotes, isLoading, showOnlyOne]);
 
   useEffect(()=>{
     if(showNotes){
@@ -94,6 +119,7 @@ export default function InputForm({
         <div className="space-y-1">
           <label className="block text-sm font-SansMono400">Note:</label>
           <textarea
+            ref={bookmarkNoteRef}
             name="note"
             rows={2}
             value={formData.note}
@@ -121,6 +147,7 @@ export default function InputForm({
       >
         <label className="block text-md font-SansMono400 text-[15px] ">Title:</label>
         <textarea
+          ref={titleTextAreaRef}
           rows={1}
           value={NotesTitle}
           onChange={e => setNotesTitle(e.target.value)}
@@ -130,6 +157,7 @@ export default function InputForm({
         />
         <label className="block text-md font-SansMono400 text-[15px] ">Note:</label>
         <textarea
+          ref={notesTextAreaRef}
           rows={2}
           value={extraNote}
           onChange={e => setExtraNote(e.target.value)}
