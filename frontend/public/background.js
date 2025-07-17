@@ -1,5 +1,6 @@
 // Configuration - will be replaced during build
-const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
+// const BACKEND_URL = 'https://hippocampus-puxn.onrender.com';
+const BACKEND_URL = 'http://127.0.0.1:8000';
 const API_URL = '__VITE_API_URL__';
 
 // Multi-domain cookie cleanup function
@@ -8,9 +9,9 @@ async function clearAllAuthCookies() {
   
   // All domains where auth cookies might exist
   const domains = [
-    'https://hippocampus-puxn.onrender.com',
+    // 'https://hippocampus-puxn.onrender.com',
     'https://extension-auth.vercel.app',
-    // 'http://127.0.0.1:8000',
+    'http://127.0.0.1:8000',
     BACKEND_URL
   ];
   
@@ -65,118 +66,54 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         console.log('🔍 BACKGROUND: Starting searchAll request');
         
-        // Check authentication status first
-        const authCheck = await fetch(`${BACKEND_URL}/auth/status`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: { 
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!authCheck.ok) {
-          console.error('❌ BACKGROUND: Authentication check failed before searchAll');
-          sendResponse({ success: false, error: 'Authentication required. Please log in again.' });
-          return;
-        }
-        
-        const authData = await authCheck.json();
-        if (!authData.is_authenticated) {
-          console.error('❌ BACKGROUND: User not authenticated for searchAll');
-          sendResponse({ success: false, error: 'Authentication required. Please log in again.' });
-          return;
-        }
-        
-        console.log('✅ BACKGROUND: Authentication verified, proceeding with searchAll');
-        
-        // Add a small delay to prevent rapid auth checks
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Fetch links first with retry logic
-        let linksResponse;
-        let retryCount = 0;
+        // Fetch links and notes in parallel with retry logic
         const maxRetries = 3;
         
-        while (retryCount < maxRetries) {
-          try {
-            linksResponse = await fetch(`${BACKEND_URL}/links/get`, {
-              method: 'GET',
-              credentials: 'include',
-              headers: { 
-                'Content-Type': 'application/json'
+        // Helper function to fetch data with retry logic
+        async function fetchWithRetry(url, endpoint) {
+          let retryCount = 0;
+          
+          while (retryCount < maxRetries) {
+            try {
+              const response = await fetch(url, {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (response.ok) {
+                console.log(`✅ BACKGROUND: ${endpoint} fetch successful`);
+                return await response.json();
+              } else if (response.status === 401 && retryCount < maxRetries - 1) {
+                console.log(`⚠️  BACKGROUND: ${endpoint} fetch got 401, retry ${retryCount + 1}/${maxRetries}`);
+                retryCount++;
+                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
+                continue;
+              } else {
+                throw new Error(`${endpoint} fetch failed: ${response.status}`);
               }
-            });
-            
-            if (linksResponse.ok) {
-              console.log('✅ BACKGROUND: Links fetch successful');
-              break; // Success, exit retry loop
-            } else if (linksResponse.status === 401 && retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: Links fetch got 401, retry ${retryCount + 1}/${maxRetries}`);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
-              continue;
-            } else {
-              throw new Error(`Links fetch failed: ${linksResponse.status}`);
-            }
-          } catch (error) {
-            if (retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: Links fetch error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-            } else {
-              throw error;
+            } catch (error) {
+              if (retryCount < maxRetries - 1) {
+                console.log(`⚠️  BACKGROUND: ${endpoint} fetch error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
+                retryCount++;
+                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+              } else {
+                throw new Error(`${endpoint} fetch failed after ${maxRetries} retries: ${error.message}`);
+              }
             }
           }
         }
         
-        if (!linksResponse || !linksResponse.ok) {
-          throw new Error(`Links fetch failed after ${maxRetries} retries`);
-        }
+        // Make both API calls in parallel
+        console.log('🚀 BACKGROUND: Starting parallel fetch for links and notes');
+        const [linksData, notesData] = await Promise.all([
+          fetchWithRetry(`${BACKEND_URL}/links/get`, 'Links'),
+          fetchWithRetry(`${BACKEND_URL}/notes/`, 'Notes')
+        ]);
         
-        const linksData = await linksResponse.json();
         console.log('📦 BACKGROUND: Links data received');
-        
-        // Then fetch notes (reset retry count)
-        let notesResponse;
-        retryCount = 0;
-        
-        while (retryCount < maxRetries) {
-          try {
-            notesResponse = await fetch(`${BACKEND_URL}/notes/`, {
-              method: 'GET',
-              credentials: 'include',
-              headers: { 
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (notesResponse.ok) {
-              console.log('✅ BACKGROUND: Notes fetch successful');
-              break; // Success, exit retry loop
-            } else if (notesResponse.status === 401 && retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: Notes fetch got 401, retry ${retryCount + 1}/${maxRetries}`);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-              continue;
-            } else {
-              throw new Error(`Notes fetch failed: ${notesResponse.status}`);
-            }
-          } catch (error) {
-            if (retryCount < maxRetries - 1) {
-              console.log(`⚠️  BACKGROUND: Notes fetch error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
-              retryCount++;
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-            } else {
-              throw error;
-            }
-          }
-        }
-        
-        if (!notesResponse || !notesResponse.ok) {
-          throw new Error(`Notes fetch failed after ${maxRetries} retries`);
-        }
-        
-        const notesData = await notesResponse.json();
         console.log('📦 BACKGROUND: Notes data received');
         
         console.log('✅ BACKGROUND: SearchAll completed successfully');

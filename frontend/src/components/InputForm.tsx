@@ -98,8 +98,16 @@ export default function InputForm({
             rows={2}
             value={formData.note}
             onChange={handleChange}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (formData.link.trim() !== "" && formData.title.trim() !== "" && formData.note.trim() !== "") {
+                  handleSubmit(e);
+                }
+              }
+            }}
             className="w-full border-b border-black bg-transparent focus:outline-none placeholder-[#151515] placeholder-opacity-25 py-1 scrollbar-hide"
-            placeholder="Enter a descriptive note for better search results"
+            placeholder="Add micro-note for better search results"
             disabled={isLoading || showOnlyOne}
           />
         </div>

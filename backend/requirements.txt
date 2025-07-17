@@ -12,3 +12,4 @@ langchain
 langchain_google_genai
 pinecone_text
 google-generativeai
+slowapi

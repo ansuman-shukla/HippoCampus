@@ -8,6 +8,11 @@ from langchain_core.documents import Document
 from app.services.pinecone_service import *
 from app.services.memories_service import *
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+# Initialize limiter for this router - will use the same key function as main app
+limiter = Limiter(key_func=get_remote_address)
 
 # https://hippocampus-backend.onrender.com/links/save for saving links
 # https://hippocampus-backend.onrender.com/links/search for searching links
@@ -22,6 +27,7 @@ class SearchRequest(BaseModel):
     filter: Optional[Dict] = None
 
 @router.post("/save")
+@limiter.limit("10/minute")  # 10 bookmark creation requests per minute per user
 async def save_link(
     link_data: link_schema,
     request: Request
@@ -52,6 +58,7 @@ async def save_link(
 
 
 @router.post("/search")
+@limiter.limit("20/minute") 
 async def search_links(
     search_request: SearchRequest,
     request: Request,
@@ -79,6 +86,7 @@ async def search_links(
 
 
 @router.delete("/delete")
+@limiter.limit("15/minute") 
 async def delete_link(
     doc_id_pincone: str,
     request: Request
@@ -151,6 +159,7 @@ async def delete_link(
 
 
 @router.get("/get")
+@limiter.limit("20/minute")  # 20 bookmark retrieval requests per minute per user
 async def get_all_bookmarks(request: Request):
     user_id = getattr(request.state, 'user_id', None)
     if not user_id:

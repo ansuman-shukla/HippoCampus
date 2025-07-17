@@ -1,5 +1,10 @@
 from fastapi import APIRouter, Request, HTTPException
 from app.services.summariseService import *
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+# Initialize limiter for this router
+limiter = Limiter(key_func=get_remote_address)
 
 
 router = APIRouter(
@@ -8,6 +13,7 @@ router = APIRouter(
 )
 
 @router.post("/generate")
+@limiter.limit("5/day")  # 5 summary generation requests per day per user
 async def generate_web_summary(request: Request):
     """
     Generate a summary for the provided text.

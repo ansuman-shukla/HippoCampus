@@ -3,6 +3,11 @@ from app.schema.notesSchema import NoteSchema
 from app.services.notes_service import *
 from app.exceptions.global_exceptions import create_error_response
 import logging
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+# Initialize limiter for this router
+limiter = Limiter(key_func=get_remote_address)
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +20,7 @@ router = APIRouter(
 
 
 @router.get("/")
+@limiter.limit("20/minute")  # 20 notes retrieval requests per minute per user
 async def get_all_notes(request: Request):
     """
     Get all notes for a user with enhanced error handling.
@@ -57,6 +63,7 @@ async def get_all_notes(request: Request):
         )
 
 @router.post("/")
+@limiter.limit("10/minute")  # 15 notes creation requests per minute per user
 async def create_new_note(note: NoteSchema, request: Request):
     """
     Create a new note for a user with enhanced error handling.
@@ -110,6 +117,7 @@ async def update_existing_note(note_id: str, note: dict, request: Request):
     return await update_note(note_id, note, user_id)
 
 @router.post("/search")
+@limiter.limit("15/minute")  # 15 notes creation requests per minute per user
 async def search_notes_by_query(request: Request, query: str , filter: dict = None):
     """
     Search notes for a user based on a query string.
@@ -123,6 +131,7 @@ async def search_notes_by_query(request: Request, query: str , filter: dict = No
 
 
 @router.delete("/{note_id}")
+@limiter.limit("15/minute")  # 15 notes creation requests per minute per user
 async def delete_existing_note(request: Request, note_id: str):
     """
     Delete an existing note for a user.
