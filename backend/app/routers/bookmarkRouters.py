@@ -8,11 +8,12 @@ from langchain_core.documents import Document
 from app.services.pinecone_service import *
 from app.services.memories_service import *
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
-# Initialize limiter for this router - will use the same key function as main app
-limiter = Limiter(key_func=get_remote_address)
+# Import the limiter from main app instead of creating a new one
+# This ensures we use the user-aware key function from main.py
+def get_limiter(request: Request):
+    """Get the limiter instance from the app state"""
+    return request.app.state.limiter
 
 # https://hippocampus-backend.onrender.com/links/save for saving links
 # https://hippocampus-backend.onrender.com/links/search for searching links
@@ -27,12 +28,15 @@ class SearchRequest(BaseModel):
     filter: Optional[Dict] = None
 
 @router.post("/save")
-@limiter.limit("10/minute")  # 10 bookmark creation requests per minute per user
 async def save_link(
     link_data: link_schema,
     request: Request
 ):
     """Endpoint for saving links to vector database"""
+    # Apply rate limiting using the app's limiter (10 requests per minute per user)
+    limiter = get_limiter(request)
+    await limiter.limit("10/minute")(request)
+    
     user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized save attempt - missing user ID")
@@ -58,12 +62,14 @@ async def save_link(
 
 
 @router.post("/search")
-@limiter.limit("15/minute")  # 15 bookmark search requests per minute per user
 async def search_links(
     search_request: SearchRequest,
     request: Request,
 ):
     """API endpoint for document search"""
+    # Apply rate limiting using the app's limiter (15 requests per minute per user)
+    limiter = get_limiter(request)
+    await limiter.limit("15/minute")(request)
 
     user_id = getattr(request.state, 'user_id', None)
     if not user_id:
@@ -86,12 +92,14 @@ async def search_links(
 
 
 @router.delete("/delete")
-@limiter.limit("15/minute")  # 15 bookmark deletion requests per minute per user
 async def delete_link(
     doc_id_pincone: str,
     request: Request
 ):
     """Delete a link/bookmark with comprehensive logging for debugging"""
+    # Apply rate limiting using the app's limiter (15 requests per minute per user)
+    limiter = get_limiter(request)
+    await limiter.limit("15/minute")(request)
     
     # Log the initial request details
     logger.info(f"=== DELETE REQUEST STARTED ===")
@@ -159,8 +167,11 @@ async def delete_link(
 
 
 @router.get("/get")
-@limiter.limit("20/minute")  # 20 bookmark retrieval requests per minute per user
 async def get_all_bookmarks(request: Request):
+    # Apply rate limiting using the app's limiter (20 requests per minute per user)
+    limiter = get_limiter(request)
+    await limiter.limit("20/minute")(request)
+    
     user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized get attempt - missing user ID")

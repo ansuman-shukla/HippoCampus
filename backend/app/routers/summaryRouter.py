@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Request, HTTPException
 from app.services.summariseService import *
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
-# Initialize limiter for this router
-limiter = Limiter(key_func=get_remote_address)
-
+# Import the limiter from main app instead of creating a new one
+# This ensures we use the user-aware key function from main.py
+def get_limiter(request: Request):
+    """Get the limiter instance from the app state"""
+    return request.app.state.limiter
 
 router = APIRouter(
     prefix="/summary",
@@ -13,11 +13,15 @@ router = APIRouter(
 )
 
 @router.post("/generate")
-@limiter.limit("5/day")  # 5 summary generation requests per day per user
 async def generate_web_summary(request: Request):
     """
     Generate a summary for the provided text.
+    Rate limited to 5 requests per day per user.
     """
+    # Apply rate limiting using the app's limiter
+    limiter = get_limiter(request)
+    await limiter.limit("5/day")(request)
+    
     data = await request.json()
     try:
         content = data.get("content")
