@@ -17,6 +17,7 @@ from app.exceptions.global_exceptions import (
 )
 from app.core.database_wrapper import get_database_health
 from app.core.pinecone_wrapper import get_pinecone_health
+from app.core.config import settings
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -326,18 +327,54 @@ def get_user_route_key(request: Request) -> str:
     """
     Generate a unique key for rate limiting based on user_id and route.
     Falls back to IP address for unauthenticated requests.
+    
+    NOTE: This function runs BEFORE auth middleware, so we need to extract 
+    user_id directly from cookies, not from request.state
     """
-    # Get user_id from request state (set by auth middleware)
-    user_id = getattr(request.state, 'user_id', None)
     route_path = request.url.path
+    user_id = None
+    
+    # Try to extract user_id directly from access_token cookie
+    # This runs before auth middleware, so request.state.user_id is not available yet
+    try:
+        access_token = request.cookies.get("access_token")
+        if access_token:
+            # Decode JWT to get user_id synchronously (for rate limiting)
+            try:
+                # We need to run this synchronously since rate limiting key func can't be async
+                # This is a simplified decode just to get the user_id for rate limiting
+                import jose.jwt
+                
+                # Quick decode without full validation (just for rate limiting)
+                payload = jose.jwt.decode(
+                    access_token, 
+                    settings.SUPABASE_JWT_SECRET, 
+                    algorithms=["HS256"],
+                    options={"verify_exp": False, "verify_aud": False}  # Skip validation for speed
+                )
+                user_id = payload.get("sub")
+                
+            except Exception as decode_error:
+                # If JWT decode fails, fall back to IP-based rate limiting
+                logger.debug(f"🔒 RATE LIMIT: JWT decode failed for rate limiting: {str(decode_error)}")
+                user_id = None
+                
+    except Exception as cookie_error:
+        logger.debug(f"🔒 RATE LIMIT: Cookie extraction failed: {str(cookie_error)}")
+        user_id = None
     
     if user_id:
         # For authenticated users: use user_id + route for rate limiting
-        return f"user:{user_id}:route:{route_path}"
+        rate_limit_key = f"user:{user_id}:route:{route_path}"
+        logger.info(f"🔒 RATE LIMIT: Generated user-based key: {rate_limit_key}")
+        logger.info(f"   └─ User ID: {user_id}")
+        return rate_limit_key
     else:
         # For unauthenticated requests: use IP + route
         client_ip = get_remote_address(request)
-        return f"ip:{client_ip}:route:{route_path}"
+        rate_limit_key = f"ip:{client_ip}:route:{route_path}"
+        logger.info(f"🔒 RATE LIMIT: Generated IP-based key (no valid token): {rate_limit_key}")
+        return rate_limit_key
 
 # Initialize rate limiter with in-memory storage (no Redis)
 limiter = Limiter(key_func=get_user_route_key)
