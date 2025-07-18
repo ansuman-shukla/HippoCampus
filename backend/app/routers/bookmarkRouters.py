@@ -108,6 +108,8 @@ async def delete_link(
     logger.info(f"Request method: {request.method}")
     logger.info(f"Query params: {dict(request.query_params)}")
     
+
+    
     # Validate doc_id_pincone parameter
     if not doc_id_pincone or doc_id_pincone.strip() == "":
         logger.error(f"Empty doc_id_pincone received: '{doc_id_pincone}'")
