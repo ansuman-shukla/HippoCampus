@@ -483,7 +483,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               break; // Success, exit retry loop
             } else if (response.status === 429) {
               // Rate limit exceeded - don't retry
-              console.log('⚠️  BACKGROUND: Rate limit exceeded (429)');
+              console.log('🚫 BACKGROUND: Genuine rate limit exceeded (HTTP 429)');
+              console.log('   ├─ This is a legitimate rate limit from the backend API');
               throw new Error('RATE_LIMIT_EXCEEDED');
             } else if (response.status === 401 && retryCount < maxRetries - 1) {
               console.log(`⚠️  BACKGROUND: GenerateSummary got 401, retry ${retryCount + 1}/${maxRetries}`);
@@ -494,6 +495,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
           } catch (error) {
+            // Don't retry rate limit errors
+            if (error.message === 'RATE_LIMIT_EXCEEDED') {
+              throw error;
+            }
+            
             if (retryCount < maxRetries - 1) {
               console.log(`⚠️  BACKGROUND: GenerateSummary error, retry ${retryCount + 1}/${maxRetries}:`, error.message);
               retryCount++;
@@ -513,6 +519,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, data });
       } catch (error) {
         console.error('❌ BACKGROUND: GenerateSummary error:', error);
+        
+        // Log specifically if this is a rate limit vs other error
+        if (error.message === 'RATE_LIMIT_EXCEEDED') {
+          console.log('📊 BACKGROUND: Confirmed rate limit error being sent to content script');
+        } else {
+          console.log('📊 BACKGROUND: Non-rate-limit error being sent to content script:', error.message);
+        }
+        
         sendResponse({ success: false, error: error.message });
       }
     }

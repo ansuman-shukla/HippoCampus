@@ -150,9 +150,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log("Summary:", response.data.summary);
           sendResponse({ content: response.data.summary });
         } else {
-          console.error("Failed to send content to background script");
           const errorMessage = response?.error || "Failed to send content to background script";
-          sendResponse({ error: errorMessage });
+          
+          // Handle rate limit error specifically
+          if (errorMessage === 'RATE_LIMIT_EXCEEDED') {
+            console.log("🚫 CONTENT: Rate limit exceeded for summary generation");
+            console.log("   ├─ This is a legitimate daily limit reached");
+            sendResponse({ 
+              error: 'RATE_LIMIT_EXCEEDED'
+            });
+          } else {
+            console.error("❌ CONTENT: Failed to send content to background script:", errorMessage);
+            console.log("   ├─ This is NOT a rate limit error, it's:", errorMessage);
+            sendResponse({ error: errorMessage });
+          }
         }
       }
     );
