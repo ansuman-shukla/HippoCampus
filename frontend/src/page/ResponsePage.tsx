@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import InputForm from "../components/InputForm";
-import {  useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { BiSearchAlt2 } from "react-icons/bi";
 import '../index.css';
 import isUrlHttp from "is-url-http";
@@ -29,6 +29,7 @@ export default function ResponsePage() {
 
   const Navigate = useNavigate();
   const [DoneNumber, setDoneNumber] = useState(0);
+  const isNavigating = useRef(false);
 
   function isValidURL(url:string) {
         console.log("The url is:", url ,"and it is valid", isUrlHttp(url));
@@ -222,6 +223,11 @@ export default function ResponsePage() {
   }
 
   const handleClear = () => {
+    // Prevent multiple rapid clicks/navigation
+    if (isNavigating.current) {
+      return;
+    }
+    
     if (showOnlyOne && leftBtnTxt == "CLOSE") {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tabId = tabs[0].id;
@@ -237,10 +243,15 @@ export default function ResponsePage() {
       Navigate(0);
     }
     else{
+      // Set navigation flag and navigate to summarize
+      isNavigating.current = true;
       Navigate("/summarize");
+      
+      // Reset flag after a delay to allow for normal navigation
+      setTimeout(() => {
+        isNavigating.current = false;
+      }, 1000);
     }
-
-    
   };
 
   return (

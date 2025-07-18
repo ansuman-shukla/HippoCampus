@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import ClickSpark from "../components/ClickSpark";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -10,12 +10,22 @@ const AppleIntelligenceLoader = () => {
   const [isLoading, setIsLoading] = useState(true);
   const Navigate = useNavigate();
   const [pageContent, setPageContent] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const hasInitiatedRequest = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple requests if already initiated
+    if (hasInitiatedRequest.current) {
+      return;
+    }
+    
+    hasInitiatedRequest.current = true;
+    
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs[0]?.id;
       if (!tabId) {
         console.log("No tab found");
+        setIsLoading(false);
         return;
       }
       chrome.tabs.sendMessage(
@@ -25,8 +35,18 @@ const AppleIntelligenceLoader = () => {
           if (response && response.content) {
             setPageContent(response.content);
             setIsLoading(false);
+          } else if (response && response.error) {
+            console.log("Error from content script:", response.error);
+            if (response.error === 'RATE_LIMIT_EXCEEDED') {
+              setError("You have used 5 free summarizations for today. Please try again tomorrow!");
+            } else {
+              setError("Failed to generate summary. Please try again later.");
+            }
+            setIsLoading(false);
           } else {
             console.log("No response from content script");
+            setError("Failed to generate summary. Please try again later.");
+            setIsLoading(false);
           }
         }
       );
@@ -52,12 +72,19 @@ const AppleIntelligenceLoader = () => {
 
         <div className="relative w-[420px] h-[500px]">
           <div className="relative bg-white w-full h-full  top-0">
-            <div className={`text-center space-y-4 absolute z-50 w-full h-full flex flex-col ${isLoading ? 'justify-center items-center' : 'justify-start items-start'}`}>
+            <div className={`text-center space-y-4 absolute z-50 w-full h-full flex flex-col ${isLoading || error ? 'justify-center items-center' : 'justify-start items-start'}`}>
               {isLoading ? (<> <h2 className="text-4xl  text-black font-NanumMyeongjo">
                 Summarizing...
               </h2>
                 <p className="text-black max-w-xs">
                   Processing your request with advanced AI capabilities...
+                </p>
+              </>) : error ? (<>
+                <h2 className="text-3xl text-black font-NanumMyeongjo mb-4">
+                  Oops!
+                </h2>
+                <p className="text-black max-w-sm text-center px-4 leading-relaxed">
+                  {error}
                 </p>
               </>) : (
                 <>
@@ -119,7 +146,7 @@ const AppleIntelligenceLoader = () => {
             </div>
             <div className="absolute bottom-5 p-4 z-[100000] w-full flex justify-center">
               <div className="mx-auto">
-                <Button text={isLoading ? `CANCEL` : 'HOME'} handle={() => Navigate("/submit")} textColor="--primary-white" />
+                <Button text={isLoading ? `CANCEL` : error ? 'CLOSE' : 'HOME'} handle={() => Navigate("/submit")} textColor="--primary-white" />
               </div>
 
             </div>

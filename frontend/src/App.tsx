@@ -58,12 +58,22 @@ const AnimatedRoutes = () => {
       }
     };
 
-    // Add event listener to document
-    document.addEventListener('keydown', handleKeyDown);
+    // Message listener for focus requests from content script
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.action === "focusSearch") {
+        console.log('🔍 APP: Focus search message received from content script');
+        Navigate("/search");
+      }
+    };
 
-    // Cleanup function to remove event listener
+    // Add event listeners
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('message', handleMessage);
+
+    // Cleanup function to remove event listeners
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('message', handleMessage);
     };
   }, [Navigate]);
 

@@ -128,6 +128,52 @@ chrome.action.onClicked.addListener((tab) => {
   });
 });
 
+// Handle keyboard shortcuts
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === "quick_search") {
+    // Alt+X: Open extension and focus on search
+    chrome.scripting.insertCSS({
+      target: { tabId: tab.id },
+      files: ["content.css"]
+    });
+
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content.js"]
+    }, () => {
+      // Send message to focus on search after extension is loaded
+      setTimeout(() => {
+        chrome.tabs.sendMessage(tab.id, { 
+          action: "focusSearch" 
+        }).catch((error) => {
+          console.log("Failed to send focusSearch message:", error);
+          // Try alternative approach for already loaded scripts
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              if (window.hippoCampusCreateSidebar) {
+                const sidebar = window.hippoCampusCreateSidebar();
+                if (sidebar) {
+                  const iframe = sidebar.querySelector('iframe');
+                  if (iframe) {
+                    setTimeout(() => {
+                      try {
+                        iframe.contentWindow.postMessage({ action: "focusSearch" }, "*");
+                      } catch (err) {
+                        console.error("Failed to send focus message to iframe:", err);
+                      }
+                    }, 200);
+                  }
+                }
+              }
+            }
+          });
+        });
+      }, 500);
+    });
+  }
+});
+
 
 
 
@@ -435,6 +481,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (response.ok) {
               console.log('✅ BACKGROUND: GenerateSummary successful');
               break; // Success, exit retry loop
+            } else if (response.status === 429) {
+              // Rate limit exceeded - don't retry
+              console.log('⚠️  BACKGROUND: Rate limit exceeded (429)');
+              throw new Error('RATE_LIMIT_EXCEEDED');
             } else if (response.status === 401 && retryCount < maxRetries - 1) {
               console.log(`⚠️  BACKGROUND: GenerateSummary got 401, retry ${retryCount + 1}/${maxRetries}`);
               retryCount++;
