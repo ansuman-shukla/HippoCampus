@@ -2,13 +2,8 @@ from fastapi import APIRouter, Depends , Request, HTTPException
 from app.schema.notesSchema import NoteSchema
 from app.services.notes_service import *
 from app.exceptions.global_exceptions import create_error_response
+from app.core.rate_limiter import limiter
 import logging
-
-# Import the limiter from main app instead of creating a new one
-# This ensures we use the user-aware key function from main.py
-def get_limiter(request: Request):
-    """Get the limiter instance from the app state"""
-    return request.app.state.limiter
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +12,12 @@ router = APIRouter(
     tags=["notes"]
 )
 
-
-
 @router.get("/")
+@limiter.limit("20/minute")
 async def get_all_notes(request: Request):
     """
     Get all notes for a user with enhanced error handling.
     """
-    # Apply rate limiting using the app's limiter (20 requests per minute per user)
-    limiter = get_limiter(request)
-    await limiter.limit("20/minute")(request)
-    
     try:
         user_id = getattr(request.state, 'user_id', None)
         if not user_id:
@@ -66,14 +56,11 @@ async def get_all_notes(request: Request):
         )
 
 @router.post("/")
+@limiter.limit("15/minute")
 async def create_new_note(note: NoteSchema, request: Request):
     """
     Create a new note for a user with enhanced error handling.
     """
-    # Apply rate limiting using the app's limiter (15 requests per minute per user)
-    limiter = get_limiter(request)
-    await limiter.limit("15/minute")(request)
-    
     try:
         user_id = getattr(request.state, 'user_id', None)
         if not user_id:
@@ -112,14 +99,11 @@ async def create_new_note(note: NoteSchema, request: Request):
         )
 
 @router.put("/{note_id}")
+@limiter.limit("15/minute")
 async def update_existing_note(note_id: str, note: dict, request: Request):
     """
     Update an existing note for a user.
     """
-    # Apply rate limiting using the app's limiter (15 requests per minute per user)
-    limiter = get_limiter(request)
-    await limiter.limit("15/minute")(request)
-    
     user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized update attempt - missing user ID")
@@ -127,31 +111,23 @@ async def update_existing_note(note_id: str, note: dict, request: Request):
     return await update_note(note_id, note, user_id)
 
 @router.post("/search")
+@limiter.limit("15/minute")
 async def search_notes_by_query(request: Request, query: str , filter: dict = None):
     """
     Search notes for a user based on a query string.
     """
-    # Apply rate limiting using the app's limiter (15 requests per minute per user)
-    limiter = get_limiter(request)
-    await limiter.limit("15/minute")(request)
-    
     user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized search attempt - missing user ID")
         raise HTTPException(status_code=401, detail="Authentication required")
     return await search_notes(query=query, namespace=user_id, filter=filter)
 
-
-
 @router.delete("/{note_id}")
+@limiter.limit("15/minute")
 async def delete_existing_note(request: Request, note_id: str):
     """
     Delete an existing note for a user.
     """
-    # Apply rate limiting using the app's limiter (15 requests per minute per user)
-    limiter = get_limiter(request)
-    await limiter.limit("15/minute")(request)
-    
     user_id = getattr(request.state, 'user_id', None)
     if not user_id:
         logger.warning("Unauthorized delete attempt - missing user ID")
