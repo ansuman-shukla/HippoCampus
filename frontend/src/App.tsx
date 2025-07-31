@@ -243,7 +243,7 @@ const AnimatedRoutes = () => {
               console.log('✅ APP: Backend cookies set successfully, checking auth status to populate localStorage');
               
               // Add a longer delay to ensure cookies are properly set and propagated
-              await new Promise(resolve => setTimeout(resolve, 500));
+              await new Promise(resolve => setTimeout(resolve, 1500));
               
               // Try to check auth status with retry logic
               let authSuccess = false;
@@ -267,14 +267,14 @@ const AnimatedRoutes = () => {
                     authRetryCount++;
                     console.log(`⚠️  APP: Auth status check failed, retry ${authRetryCount}/${maxAuthRetries}`);
                     if (authRetryCount < maxAuthRetries) {
-                      await new Promise(resolve => setTimeout(resolve, 1000 * authRetryCount));
+                      await new Promise(resolve => setTimeout(resolve, 2000 * authRetryCount));
                     }
                   }
                 } catch (error) {
                   authRetryCount++;
                   console.log(`⚠️  APP: Auth status check error, retry ${authRetryCount}/${maxAuthRetries}:`, error);
                   if (authRetryCount < maxAuthRetries) {
-                    await new Promise(resolve => setTimeout(resolve, 1000 * authRetryCount));
+                    await new Promise(resolve => setTimeout(resolve, 2000 * authRetryCount));
                   }
                 }
               }
