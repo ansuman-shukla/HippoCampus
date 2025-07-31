@@ -3,6 +3,52 @@ const BACKEND_URL = 'https://hippocampus-1.onrender.com';
 // const BACKEND_URL = 'http://127.0.0.1:8000';
 const API_URL = '__VITE_API_URL__';
 
+// BACKGROUND SCRIPT STARTUP LOGGING
+console.log('🚀 BACKGROUND: Service worker starting up');
+console.log(`   ├─ Startup time: ${new Date().toISOString()}`);
+console.log(`   ├─ Extension ID: ${chrome.runtime.id}`);
+console.log(`   ├─ Backend URL: ${BACKEND_URL}`);
+
+// Check available commands at startup
+chrome.commands.getAll((commands) => {
+  console.log('⌨️ BACKGROUND: Available keyboard commands:');
+  commands.forEach(command => {
+    console.log(`   ├─ Command: ${command.name}`);
+    console.log(`   │  ├─ Description: ${command.description}`);
+    console.log(`   │  ├─ Shortcut: ${command.shortcut || 'Not set'}`);
+    console.log(`   │  └─ Global: ${command.global || false}`);
+  });
+  
+  if (commands.length === 0) {
+    console.warn('⚠️ BACKGROUND: No keyboard commands found! Check manifest.json');
+  }
+});
+
+// Test if action listener is properly set up
+console.log('🔧 BACKGROUND: Setting up extension action listener');
+console.log('   ├─ This should respond to Alt+M and extension icon clicks');
+
+// Add runtime startup event listener
+chrome.runtime.onStartup.addListener(() => {
+  console.log('🔄 BACKGROUND: Extension runtime started');
+});
+
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log('📦 BACKGROUND: Extension installed/updated');
+  console.log(`   ├─ Reason: ${details.reason}`);
+  console.log(`   ├─ Previous version: ${details.previousVersion || 'N/A'}`);
+  
+  // Re-check commands after installation
+  setTimeout(() => {
+    chrome.commands.getAll((commands) => {
+      console.log('🔍 BACKGROUND: Post-install command check:');
+      commands.forEach(command => {
+        console.log(`   ├─ ${command.name}: ${command.shortcut || 'Not set'}`);
+      });
+    });
+  }, 1000);
+});
+
 // Helper function to notify frontend of authentication failures
 async function notifyAuthenticationFailure(reason = 'Authentication failed') {
   console.log('🚫 BACKGROUND: Notifying frontend of authentication failure');
@@ -116,61 +162,162 @@ async function clearAllAuthCookies() {
   console.log('✅ BACKGROUND: Multi-domain cookie cleanup completed');
 }
 
+// Test that action listener is registered
+console.log('📋 BACKGROUND: Registering chrome.action.onClicked listener...');
+
+// STEP 1: Alt+M Extension Action Handler
+// This fires when the user clicks the extension icon OR presses Alt+M
 chrome.action.onClicked.addListener((tab) => {
+  console.log('🔥 BACKGROUND STEP 1: Extension action triggered (Alt+M or icon click)');
+  console.log(`   ├─ Tab ID: ${tab.id}`);
+  console.log(`   ├─ Tab URL: ${tab.url}`);
+  console.log(`   ├─ Current time: ${new Date().toISOString()}`);
+  console.log('   ├─ This confirms the action listener is working!');
+  
+  console.log('🎨 BACKGROUND STEP 2: Injecting CSS styles into target tab');
   chrome.scripting.insertCSS({
     target: { tabId: tab.id },
     files: ["content.css"]
+  }).then(() => {
+    console.log('✅ BACKGROUND STEP 2: CSS injection completed successfully');
+  }).catch((error) => {
+    console.error('❌ BACKGROUND STEP 2: CSS injection failed:', error);
   });
 
+  console.log('📜 BACKGROUND STEP 3: Executing content script in target tab');
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     files: ["content.js"]
+  }).then(() => {
+    console.log('✅ BACKGROUND STEP 3: Content script execution completed successfully');
+    console.log('   ├─ The content script should now toggle the sidebar');
+    console.log('   ├─ Check the tab console for content script logs');
+  }).catch((error) => {
+    console.error('❌ BACKGROUND STEP 3: Content script execution failed:', error);
   });
 });
 
-// Handle keyboard shortcuts
-chrome.commands.onCommand.addListener((command, tab) => {
-  if (command === "quick_search") {
-    // Alt+X: Open extension and focus on search
+console.log('✅ BACKGROUND: chrome.action.onClicked listener registered successfully');
+
+// MANUAL TEST: Add a context menu item to test if background script is working
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "test-background-script",
+    title: "🧪 Test Background Script (Alt+M)",
+    contexts: ["page"]
+  });
+});
+
+// Handle context menu clicks (this tests if background script is responsive)
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "test-background-script") {
+    console.log('🧪 BACKGROUND: Manual test triggered via context menu');
+    console.log('   ├─ This confirms the background script is active and responsive');
+    console.log('   ├─ Now manually executing the same logic as Alt+M shortcut');
+    
+    // Manually execute the same CSS injection and script execution as Alt+M
+    console.log('🎨 BACKGROUND TEST: Injecting CSS styles into target tab');
     chrome.scripting.insertCSS({
       target: { tabId: tab.id },
       files: ["content.css"]
+    }).then(() => {
+      console.log('✅ BACKGROUND TEST: CSS injection completed successfully');
+    }).catch((error) => {
+      console.error('❌ BACKGROUND TEST: CSS injection failed:', error);
     });
 
+    console.log('📜 BACKGROUND TEST: Executing content script in target tab');
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content.js"]
+    }).then(() => {
+      console.log('✅ BACKGROUND TEST: Content script execution completed successfully');
+    }).catch((error) => {
+      console.error('❌ BACKGROUND TEST: Content script execution failed:', error);
+    });
+  }
+});
+
+// KEYBOARD SHORTCUT COMMAND HANDLER
+chrome.commands.onCommand.addListener((command, tab) => {
+  console.log('⌨️ BACKGROUND: Keyboard shortcut command received');
+  console.log(`   ├─ Command: ${command}`);
+  console.log(`   ├─ Tab ID: ${tab.id}`);
+  console.log(`   ├─ Tab URL: ${tab.url}`);
+  console.log(`   ├─ Current time: ${new Date().toISOString()}`);
+  
+  if (command === "quick_search") {
+    console.log('🔍 BACKGROUND: Processing Alt+X (quick_search) command');
+    
+    // Alt+X: Open extension and focus on search
+    console.log('🎨 BACKGROUND: Injecting CSS for Alt+X command');
+    chrome.scripting.insertCSS({
+      target: { tabId: tab.id },
+      files: ["content.css"]
+    }).then(() => {
+      console.log('✅ BACKGROUND: CSS injection completed for Alt+X');
+    }).catch((error) => {
+      console.error('❌ BACKGROUND: CSS injection failed for Alt+X:', error);
+    });
+
+    console.log('📜 BACKGROUND: Executing content script for Alt+X command');
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ["content.js"]
     }, () => {
+      console.log('✅ BACKGROUND: Content script executed for Alt+X');
+      console.log('⏱️ BACKGROUND: Setting up focus search message with 500ms delay');
+      
       // Send message to focus on search after extension is loaded
       setTimeout(() => {
+        console.log('📤 BACKGROUND: Sending focusSearch message to content script');
         chrome.tabs.sendMessage(tab.id, { 
           action: "focusSearch" 
+        }).then(() => {
+          console.log('✅ BACKGROUND: FocusSearch message sent successfully');
         }).catch((error) => {
-          console.log("Failed to send focusSearch message:", error);
+          console.log("⚠️ BACKGROUND: Failed to send focusSearch message:", error);
+          console.log('🔄 BACKGROUND: Trying alternative approach for already loaded scripts');
+          
           // Try alternative approach for already loaded scripts
           chrome.scripting.executeScript({
             target: { tabId: tab.id },
             func: () => {
+              console.log('🔄 CONTENT: Alternative focus approach executing');
               if (window.hippoCampusCreateSidebar) {
+                console.log('✅ CONTENT: Found hippoCampusCreateSidebar function');
                 const sidebar = window.hippoCampusCreateSidebar();
                 if (sidebar) {
+                  console.log('✅ CONTENT: Sidebar created successfully');
                   const iframe = sidebar.querySelector('iframe');
                   if (iframe) {
+                    console.log('✅ CONTENT: Found iframe, sending focus message');
                     setTimeout(() => {
                       try {
                         iframe.contentWindow.postMessage({ action: "focusSearch" }, "*");
+                        console.log('✅ CONTENT: Focus message sent to iframe');
                       } catch (err) {
-                        console.error("Failed to send focus message to iframe:", err);
+                        console.error("❌ CONTENT: Failed to send focus message to iframe:", err);
                       }
                     }, 200);
+                  } else {
+                    console.warn('⚠️ CONTENT: No iframe found in sidebar');
                   }
+                } else {
+                  console.warn('⚠️ CONTENT: Failed to create sidebar');
                 }
+              } else {
+                console.warn('⚠️ CONTENT: hippoCampusCreateSidebar function not available');
               }
             }
           });
         });
       }, 500);
     });
+  } else {
+    console.log(`⚠️ BACKGROUND: Unknown command received: ${command}`);
+    console.log('   ├─ Expected commands: "quick_search" (Alt+X)');
+    console.log('   ├─ Note: Alt+M should trigger chrome.action.onClicked, not commands');
   }
 });
 

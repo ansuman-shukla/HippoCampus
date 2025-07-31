@@ -396,6 +396,8 @@ const Intro = () => {
                         <LoaderPillars />
                     </div>
                 </div>
+
+                
             </motion.div>
         );
     }

@@ -1,0 +1,345 @@
+NFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:10000 (Press CTRL+C to quit)
+2025-07-29 15:09:10,419 - app.main - INFO - 🔍 AUTH MIDDLEWARE: Incoming GET request to /notes/
+2025-07-29 15:09:10,419 - app.main - INFO -    ├─ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb...
+2025-07-29 15:09:10,419 - app.main - INFO -    ├─ Remote IP: 103.105.226.134
+2025-07-29 15:09:10,419 - app.main - INFO -    └─ Content-Type: application/json
+2025-07-29 15:09:10,420 - app.main - INFO - 🔐 AUTH MIDDLEWARE: Protected endpoint - authentication required
+2025-07-29 15:09:10,420 - app.main - INFO - 🍪 AUTH MIDDLEWARE: Extracting tokens from request
+2025-07-29 15:09:10,420 - app.main - INFO -    ├─ Access token present: True (length: 1313)
+2025-07-29 15:09:10,420 - app.main - INFO -    └─ Refresh token present: True (length: 12)
+2025-07-29 15:09:10,420 - app.main - INFO - 🔍 AUTH MIDDLEWARE: Attempting to validate access token
+2025-07-29 15:09:10,420 - app.main - INFO -    ├─ Decoding JWT token...
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO - 🔑 JWT DECODE: Starting JWT token validation
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO -    ├─ Original token length: 1313
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO -    ├─ Cleaned token length: 1313
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO -    ├─ JWT secret configured: True
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO -    ├─ JWT secret length: 88
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO -    ├─ Expected audience: authenticated
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO -    ├─ Expected issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO -    └─ Supabase URL: https://dzftiemmhvmtrlooukqd.supabase.co
+2025-07-29 15:09:10,420 - app.utils.jwt - INFO - 🔍 JWT DECODE: Attempting to decode token with HS256 algorithm
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO - ✅ JWT DECODE: Token decoded successfully
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO -    ├─ Payload keys: ['iss', 'sub', 'aud', 'exp', 'iat', 'email', 'phone', 'app_metadata', 'user_metadata', 'role', 'aal', 'amr', 'session_id', 'is_anonymous']
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO -    ├─ Subject (user_id): 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO -    ├─ Email: ansuman00edu@gmail.com
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO -    ├─ Audience: authenticated
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO -    ├─ Issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO -    ├─ Issued at: 1753801670
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO -    └─ Expires at: 1753812470
+2025-07-29 15:09:10,421 - app.utils.jwt - INFO - ✅ JWT DECODE: All required claims validated successfully
+2025-07-29 15:09:10,421 - app.main - INFO -    ├─ JWT decode successful
+2025-07-29 15:09:10,422 - app.main - INFO -    ├─ Token subject (user_id): 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:10,422 - app.main - INFO -    ├─ Token issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:10,422 - app.main - INFO -    ├─ Token audience: authenticated
+2025-07-29 15:09:10,422 - app.main - INFO -    ├─ Token expiry: 1753812470
+2025-07-29 15:09:10,422 - app.main - INFO -    └─ Token issued at: 1753801670
+2025-07-29 15:09:10,422 - app.main - INFO - ✅ AUTH MIDDLEWARE: Access token validation successful for user: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:10,422 - app.main - INFO - 👤 AUTH MIDDLEWARE: Ensuring user exists in database
+2025-07-29 15:09:10,422 - app.services.user_service - INFO - 👤 USER SERVICE: Checking/creating user from JWT payload
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    ├─ Email: ansuman00edu@gmail.com
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    ├─ Role: authenticated
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    ├─ Issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    ├─ Created at: None
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    └─ Last sign in: None
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    ├─ Full name: Ansuman Kumar
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    └─ Picture present: True
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    ├─ Provider: google
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    └─ Providers: ['google']
+2025-07-29 15:09:10,422 - app.services.user_service - INFO - 🔍 USER SERVICE: Checking if user exists in database
+2025-07-29 15:09:10,422 - app.services.user_service - INFO - 🔍 USER SERVICE: Checking if user exists
+2025-07-29 15:09:10,422 - app.services.user_service - INFO -    └─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:11,783 - app.services.user_service - INFO -    └─ User exists: True
+2025-07-29 15:09:11,784 - app.services.user_service - INFO -    └─ Found user data keys: ['_id', 'id', 'email', 'role', 'created_at', 'last_sign_in_at', 'issuer', 'full_name', 'picture', 'provider', 'providers', 'monthly_summary_pages_used', 'monthly_summary_reset_date', 'subscription_end_date', 'subscription_start_date', 'subscription_status', 'subscription_tier', 'total_memories_saved']
+2025-07-29 15:09:11,784 - app.services.user_service - INFO - ✅ USER SERVICE: User already exists, skipping creation
+2025-07-29 15:09:11,784 - app.main - INFO - ✅ AUTH MIDDLEWARE: User validation/creation successful
+2025-07-29 15:09:11,784 - app.main - INFO - 📝 AUTH MIDDLEWARE: Storing user context in request state
+2025-07-29 15:09:11,784 - app.main - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:11,784 - app.main - INFO -    └─ Payload keys: ['iss', 'sub', 'aud', 'exp', 'iat', 'email', 'phone', 'app_metadata', 'user_metadata', 'role', 'aal', 'amr', 'session_id', 'is_anonymous']
+2025-07-29 15:09:11,784 - app.main - INFO - ➡️  AUTH MIDDLEWARE: Proceeding to route handler
+2025-07-29 15:09:11,789 - app.routers.notesRouter - INFO - Retrieving all notes for user 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:12,228 - app.routers.notesRouter - INFO - Successfully retrieved 13 notes for user 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:12,229 - app.main - INFO - 🔍 AUTH MIDDLEWARE: Incoming GET request to /links/get
+2025-07-29 15:09:12,229 - app.main - INFO -    ├─ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb...
+2025-07-29 15:09:12,229 - app.main - INFO -    ├─ Remote IP: 103.105.226.134
+2025-07-29 15:09:12,229 - app.main - INFO -    └─ Content-Type: application/json
+2025-07-29 15:09:12,229 - app.main - INFO - 🔐 AUTH MIDDLEWARE: Protected endpoint - authentication required
+2025-07-29 15:09:12,229 - app.main - INFO - 🍪 AUTH MIDDLEWARE: Extracting tokens from request
+2025-07-29 15:09:12,230 - app.main - INFO -    ├─ Access token present: True (length: 1313)
+2025-07-29 15:09:12,230 - app.main - INFO -    └─ Refresh token present: True (length: 12)
+2025-07-29 15:09:12,230 - app.main - INFO - 🔍 AUTH MIDDLEWARE: Attempting to validate access token
+2025-07-29 15:09:12,230 - app.main - INFO -    ├─ Decoding JWT token...
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO - 🔑 JWT DECODE: Starting JWT token validation
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO -    ├─ Original token length: 1313
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO -    ├─ Cleaned token length: 1313
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO -    ├─ JWT secret configured: True
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO -    ├─ JWT secret length: 88
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO -    ├─ Expected audience: authenticated
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO -    ├─ Expected issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO -    └─ Supabase URL: https://dzftiemmhvmtrlooukqd.supabase.co
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO - 🔍 JWT DECODE: Attempting to decode token with HS256 algorithm
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO - ✅ JWT DECODE: Token decoded successfully
+2025-07-29 15:09:12,230 - app.utils.jwt - INFO -    ├─ Payload keys: ['iss', 'sub', 'aud', 'exp', 'iat', 'email', 'phone', 'app_metadata', 'user_metadata', 'role', 'aal', 'amr', 'session_id', 'is_anonymous']
+2025-07-29 15:09:12,231 - app.utils.jwt - INFO -    ├─ Subject (user_id): 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:12,231 - app.utils.jwt - INFO -    ├─ Email: ansuman00edu@gmail.com
+2025-07-29 15:09:12,231 - app.utils.jwt - INFO -    ├─ Audience: authenticated
+2025-07-29 15:09:12,231 - app.utils.jwt - INFO -    ├─ Issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:12,231 - app.utils.jwt - INFO -    ├─ Issued at: 1753801670
+2025-07-29 15:09:12,231 - app.utils.jwt - INFO -    └─ Expires at: 1753812470
+2025-07-29 15:09:12,231 - app.utils.jwt - INFO - ✅ JWT DECODE: All required claims validated successfully
+2025-07-29 15:09:12,231 - app.main - INFO -    ├─ JWT decode successful
+2025-07-29 15:09:12,231 - app.main - INFO -    ├─ Token subject (user_id): 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:12,231 - app.main - INFO -    ├─ Token issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:12,231 - app.main - INFO -    ├─ Token audience: authenticated
+2025-07-29 15:09:12,231 - app.main - INFO -    ├─ Token expiry: 1753812470
+2025-07-29 15:09:12,231 - app.main - INFO -    └─ Token issued at: 1753801670
+2025-07-29 15:09:12,231 - app.main - INFO - ✅ AUTH MIDDLEWARE: Access token validation successful for user: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:12,231 - app.main - INFO - 👤 AUTH MIDDLEWARE: Ensuring user exists in database
+2025-07-29 15:09:12,231 - app.services.user_service - INFO - 👤 USER SERVICE: Checking/creating user from JWT payload
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    ├─ Email: ansuman00edu@gmail.com
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    ├─ Role: authenticated
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    ├─ Issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    ├─ Created at: None
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    └─ Last sign in: None
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    ├─ Full name: Ansuman Kumar
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    └─ Picture present: True
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    ├─ Provider: google
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    └─ Providers: ['google']
+2025-07-29 15:09:12,231 - app.services.user_service - INFO - 🔍 USER SERVICE: Checking if user exists in database
+2025-07-29 15:09:12,231 - app.services.user_service - INFO - 🔍 USER SERVICE: Checking if user exists
+2025-07-29 15:09:12,231 - app.services.user_service - INFO -    └─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:12,450 - app.services.user_service - INFO -    └─ User exists: True
+2025-07-29 15:09:12,450 - app.services.user_service - INFO -    └─ Found user data keys: ['_id', 'id', 'email', 'role', 'created_at', 'last_sign_in_at', 'issuer', 'full_name', 'picture', 'provider', 'providers', 'monthly_summary_pages_used', 'monthly_summary_reset_date', 'subscription_end_date', 'subscription_start_date', 'subscription_status', 'subscription_tier', 'total_memories_saved']
+2025-07-29 15:09:12,450 - app.services.user_service - INFO - ✅ USER SERVICE: User already exists, skipping creation
+2025-07-29 15:09:12,451 - app.main - INFO - ✅ AUTH MIDDLEWARE: User validation/creation successful
+2025-07-29 15:09:12,451 - app.main - INFO - 📝 AUTH MIDDLEWARE: Storing user context in request state
+2025-07-29 15:09:12,451 - app.main - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:12,451 - app.main - INFO -    └─ Payload keys: ['iss', 'sub', 'aud', 'exp', 'iat', 'email', 'phone', 'app_metadata', 'user_metadata', 'role', 'aal', 'amr', 'session_id', 'is_anonymous']
+2025-07-29 15:09:12,451 - app.main - INFO - ➡️  AUTH MIDDLEWARE: Proceeding to route handler
+2025-07-29 15:09:12,452 - app.services.memories_service - INFO - Attempting to get all documents for user 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:13,547 - app.services.memories_service - INFO - Successfully retrieved all documents for user 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:13,550 - app.main - INFO - ⬅️  AUTH MIDDLEWARE: Route handler completed, processing response
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ Response status: 200
+2025-07-29 15:09:13,550 - app.main - INFO -    └─ Response headers: ['content-length', 'content-type']
+2025-07-29 15:09:13,550 - app.main - INFO - 🍪 AUTH MIDDLEWARE: Updating user information cookies
+2025-07-29 15:09:13,550 - app.main - INFO - 👤 USER COOKIES: Updating user information cookies
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ Current user_id cookie: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ New user_id: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ User ID unchanged
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ Full name from token: Ansuman Kumar
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ Current user_name cookie: Ansuman Kumar
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ Picture from token: True
+2025-07-29 15:09:13,550 - app.main - INFO -    └─ Current user_picture cookie: True
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ User name unchanged
+2025-07-29 15:09:13,550 - app.main - INFO -    ├─ User picture unchanged
+2025-07-29 15:09:13,551 - app.main - INFO - ✅ USER COOKIES: User cookies updated successfully
+2025-07-29 15:09:13,551 - app.main - INFO - ✅ AUTH MIDDLEWARE: Request processing completed successfully
+INFO:     103.105.226.134:0 - "GET /notes/ HTTP/1.1" 200 OK
+2025-07-29 15:09:13,551 - app.main - INFO - ⬅️  AUTH MIDDLEWARE: Route handler completed, processing response
+2025-07-29 15:09:13,551 - app.main - INFO -    ├─ Response status: 200
+2025-07-29 15:09:13,551 - app.main - INFO -    └─ Response headers: ['content-length', 'content-type']
+2025-07-29 15:09:13,551 - app.main - INFO - 🍪 AUTH MIDDLEWARE: Updating user information cookies
+2025-07-29 15:09:13,551 - app.main - INFO - 👤 USER COOKIES: Updating user information cookies
+2025-07-29 15:09:13,551 - app.main - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:13,551 - app.main - INFO -    ├─ Current user_id cookie: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:13,551 - app.main - INFO -    ├─ New user_id: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:13,551 - app.main - INFO -    ├─ User ID unchanged
+2025-07-29 15:09:13,552 - app.main - INFO -    ├─ Full name from token: Ansuman Kumar
+2025-07-29 15:09:13,552 - app.main - INFO -    ├─ Current user_name cookie: Ansuman Kumar
+2025-07-29 15:09:13,552 - app.main - INFO -    ├─ Picture from token: True
+2025-07-29 15:09:13,552 - app.main - INFO -    └─ Current user_picture cookie: True
+2025-07-29 15:09:13,552 - app.main - INFO -    ├─ User name unchanged
+2025-07-29 15:09:13,552 - app.main - INFO -    ├─ User picture unchanged
+2025-07-29 15:09:13,552 - app.main - INFO - ✅ USER COOKIES: User cookies updated successfully
+2025-07-29 15:09:13,552 - app.main - INFO - ✅ AUTH MIDDLEWARE: Request processing completed successfully
+INFO:     103.105.226.134:0 - "GET /links/get HTTP/1.1" 200 OK
+2025-07-29 15:09:14,071 - app.main - INFO - 🔍 AUTH MIDDLEWARE: Incoming GET request to /notes/
+2025-07-29 15:09:14,071 - app.main - INFO -    ├─ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb...
+2025-07-29 15:09:14,071 - app.main - INFO -    ├─ Remote IP: 103.105.226.134
+2025-07-29 15:09:14,071 - app.main - INFO -    └─ Content-Type: application/json
+2025-07-29 15:09:14,071 - app.main - INFO - 🔐 AUTH MIDDLEWARE: Protected endpoint - authentication required
+2025-07-29 15:09:14,071 - app.main - INFO - 🍪 AUTH MIDDLEWARE: Extracting tokens from request
+2025-07-29 15:09:14,071 - app.main - INFO -    ├─ Access token present: True (length: 1313)
+2025-07-29 15:09:14,071 - app.main - INFO -    └─ Refresh token present: True (length: 12)
+2025-07-29 15:09:14,071 - app.main - INFO - 🔍 AUTH MIDDLEWARE: Attempting to validate access token
+2025-07-29 15:09:14,071 - app.main - INFO -    ├─ Decoding JWT token...
+2025-07-29 15:09:14,071 - app.utils.jwt - INFO - 🔑 JWT DECODE: Starting JWT token validation
+2025-07-29 15:09:14,071 - app.utils.jwt - INFO -    ├─ Original token length: 1313
+2025-07-29 15:09:14,071 - app.utils.jwt - INFO -    ├─ Cleaned token length: 1313
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ JWT secret configured: True
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ JWT secret length: 88
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ Expected audience: authenticated
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ Expected issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    └─ Supabase URL: https://dzftiemmhvmtrlooukqd.supabase.co
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO - 🔍 JWT DECODE: Attempting to decode token with HS256 algorithm
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO - ✅ JWT DECODE: Token decoded successfully
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ Payload keys: ['iss', 'sub', 'aud', 'exp', 'iat', 'email', 'phone', 'app_metadata', 'user_metadata', 'role', 'aal', 'amr', 'session_id', 'is_anonymous']
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ Subject (user_id): 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ Email: ansuman00edu@gmail.com
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ Audience: authenticated
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ Issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    ├─ Issued at: 1753801729
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO -    └─ Expires at: 1753812529
+2025-07-29 15:09:14,072 - app.utils.jwt - INFO - ✅ JWT DECODE: All required claims validated successfully
+2025-07-29 15:09:14,072 - app.main - INFO -    ├─ JWT decode successful
+2025-07-29 15:09:14,072 - app.main - INFO -    ├─ Token subject (user_id): 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,072 - app.main - INFO -    ├─ Token issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:14,072 - app.main - INFO -    ├─ Token audience: authenticated
+2025-07-29 15:09:14,072 - app.main - INFO -    ├─ Token expiry: 1753812529
+2025-07-29 15:09:14,073 - app.main - INFO -    └─ Token issued at: 1753801729
+2025-07-29 15:09:14,073 - app.main - INFO - ✅ AUTH MIDDLEWARE: Access token validation successful for user: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,073 - app.main - INFO - 👤 AUTH MIDDLEWARE: Ensuring user exists in database
+2025-07-29 15:09:14,073 - app.services.user_service - INFO - 👤 USER SERVICE: Checking/creating user from JWT payload
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    ├─ Email: ansuman00edu@gmail.com
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    ├─ Role: authenticated
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    ├─ Issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    ├─ Created at: None
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    └─ Last sign in: None
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    ├─ Full name: Ansuman Kumar
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    └─ Picture present: True
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    ├─ Provider: google
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    └─ Providers: ['google']
+2025-07-29 15:09:14,073 - app.services.user_service - INFO - 🔍 USER SERVICE: Checking if user exists in database
+2025-07-29 15:09:14,073 - app.services.user_service - INFO - 🔍 USER SERVICE: Checking if user exists
+2025-07-29 15:09:14,073 - app.services.user_service - INFO -    └─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,295 - app.services.user_service - INFO -    └─ User exists: True
+2025-07-29 15:09:14,295 - app.services.user_service - INFO -    └─ Found user data keys: ['_id', 'id', 'email', 'role', 'created_at', 'last_sign_in_at', 'issuer', 'full_name', 'picture', 'provider', 'providers', 'monthly_summary_pages_used', 'monthly_summary_reset_date', 'subscription_end_date', 'subscription_start_date', 'subscription_status', 'subscription_tier', 'total_memories_saved']
+2025-07-29 15:09:14,296 - app.services.user_service - INFO - ✅ USER SERVICE: User already exists, skipping creation
+2025-07-29 15:09:14,296 - app.main - INFO - ✅ AUTH MIDDLEWARE: User validation/creation successful
+2025-07-29 15:09:14,296 - app.main - INFO - 📝 AUTH MIDDLEWARE: Storing user context in request state
+2025-07-29 15:09:14,296 - app.main - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,296 - app.main - INFO -    └─ Payload keys: ['iss', 'sub', 'aud', 'exp', 'iat', 'email', 'phone', 'app_metadata', 'user_metadata', 'role', 'aal', 'amr', 'session_id', 'is_anonymous']
+2025-07-29 15:09:14,296 - app.main - INFO - ➡️  AUTH MIDDLEWARE: Proceeding to route handler
+2025-07-29 15:09:14,296 - app.main - INFO - 🔍 AUTH MIDDLEWARE: Incoming GET request to /links/get
+2025-07-29 15:09:14,296 - app.main - INFO -    ├─ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb...
+2025-07-29 15:09:14,297 - app.main - INFO -    ├─ Remote IP: 103.105.226.134
+2025-07-29 15:09:14,297 - app.main - INFO -    └─ Content-Type: application/json
+2025-07-29 15:09:14,297 - app.main - INFO - 🔐 AUTH MIDDLEWARE: Protected endpoint - authentication required
+2025-07-29 15:09:14,297 - app.main - INFO - 🍪 AUTH MIDDLEWARE: Extracting tokens from request
+2025-07-29 15:09:14,297 - app.main - INFO -    ├─ Access token present: True (length: 1313)
+2025-07-29 15:09:14,297 - app.main - INFO -    └─ Refresh token present: True (length: 12)
+2025-07-29 15:09:14,297 - app.main - INFO - 🔍 AUTH MIDDLEWARE: Attempting to validate access token
+2025-07-29 15:09:14,297 - app.main - INFO -    ├─ Decoding JWT token...
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO - 🔑 JWT DECODE: Starting JWT token validation
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ Original token length: 1313
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ Cleaned token length: 1313
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ JWT secret configured: True
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ JWT secret length: 88
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ Expected audience: authenticated
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ Expected issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    └─ Supabase URL: https://dzftiemmhvmtrlooukqd.supabase.co
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO - 🔍 JWT DECODE: Attempting to decode token with HS256 algorithm
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO - ✅ JWT DECODE: Token decoded successfully
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ Payload keys: ['iss', 'sub', 'aud', 'exp', 'iat', 'email', 'phone', 'app_metadata', 'user_metadata', 'role', 'aal', 'amr', 'session_id', 'is_anonymous']
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ Subject (user_id): 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,297 - app.utils.jwt - INFO -    ├─ Email: ansuman00edu@gmail.com
+2025-07-29 15:09:14,298 - app.utils.jwt - INFO -    ├─ Audience: authenticated
+2025-07-29 15:09:14,298 - app.utils.jwt - INFO -    ├─ Issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:14,298 - app.utils.jwt - INFO -    ├─ Issued at: 1753801729
+2025-07-29 15:09:14,298 - app.utils.jwt - INFO -    └─ Expires at: 1753812529
+2025-07-29 15:09:14,298 - app.utils.jwt - INFO - ✅ JWT DECODE: All required claims validated successfully
+2025-07-29 15:09:14,298 - app.main - INFO -    ├─ JWT decode successful
+2025-07-29 15:09:14,298 - app.main - INFO -    ├─ Token subject (user_id): 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,298 - app.main - INFO -    ├─ Token issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:14,298 - app.main - INFO -    ├─ Token audience: authenticated
+2025-07-29 15:09:14,298 - app.main - INFO -    ├─ Token expiry: 1753812529
+2025-07-29 15:09:14,298 - app.main - INFO -    └─ Token issued at: 1753801729
+2025-07-29 15:09:14,298 - app.main - INFO - ✅ AUTH MIDDLEWARE: Access token validation successful for user: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,298 - app.main - INFO - 👤 AUTH MIDDLEWARE: Ensuring user exists in database
+2025-07-29 15:09:14,298 - app.services.user_service - INFO - 👤 USER SERVICE: Checking/creating user from JWT payload
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    ├─ Email: ansuman00edu@gmail.com
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    ├─ Role: authenticated
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    ├─ Issuer: https://dzftiemmhvmtrlooukqd.supabase.co/auth/v1
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    ├─ Created at: None
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    └─ Last sign in: None
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    ├─ Full name: Ansuman Kumar
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    └─ Picture present: True
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    ├─ Provider: google
+2025-07-29 15:09:14,298 - app.services.user_service - INFO -    └─ Providers: ['google']
+2025-07-29 15:09:14,299 - app.services.user_service - INFO - 🔍 USER SERVICE: Checking if user exists in database
+2025-07-29 15:09:14,299 - app.services.user_service - INFO - 🔍 USER SERVICE: Checking if user exists
+2025-07-29 15:09:14,299 - app.services.user_service - INFO -    └─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,517 - app.services.user_service - INFO -    └─ User exists: True
+2025-07-29 15:09:14,518 - app.services.user_service - INFO -    └─ Found user data keys: ['_id', 'id', 'email', 'role', 'created_at', 'last_sign_in_at', 'issuer', 'full_name', 'picture', 'provider', 'providers', 'monthly_summary_pages_used', 'monthly_summary_reset_date', 'subscription_end_date', 'subscription_start_date', 'subscription_status', 'subscription_tier', 'total_memories_saved']
+2025-07-29 15:09:14,518 - app.services.user_service - INFO - ✅ USER SERVICE: User already exists, skipping creation
+2025-07-29 15:09:14,518 - app.main - INFO - ✅ AUTH MIDDLEWARE: User validation/creation successful
+2025-07-29 15:09:14,518 - app.main - INFO - 📝 AUTH MIDDLEWARE: Storing user context in request state
+2025-07-29 15:09:14,518 - app.main - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,518 - app.main - INFO -    └─ Payload keys: ['iss', 'sub', 'aud', 'exp', 'iat', 'email', 'phone', 'app_metadata', 'user_metadata', 'role', 'aal', 'amr', 'session_id', 'is_anonymous']
+2025-07-29 15:09:14,518 - app.main - INFO - ➡️  AUTH MIDDLEWARE: Proceeding to route handler
+2025-07-29 15:09:14,519 - app.routers.notesRouter - INFO - Retrieving all notes for user 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,956 - app.routers.notesRouter - INFO - Successfully retrieved 13 notes for user 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:14,957 - app.services.memories_service - INFO - Attempting to get all documents for user 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:15,832 - app.services.memories_service - INFO - Successfully retrieved all documents for user 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:15,838 - app.main - INFO - ⬅️  AUTH MIDDLEWARE: Route handler completed, processing response
+2025-07-29 15:09:15,838 - app.main - INFO -    ├─ Response status: 200
+2025-07-29 15:09:15,838 - app.main - INFO -    └─ Response headers: ['content-length', 'content-type']
+2025-07-29 15:09:15,838 - app.main - INFO - 🍪 AUTH MIDDLEWARE: Updating user information cookies
+2025-07-29 15:09:15,838 - app.main - INFO - 👤 USER COOKIES: Updating user information cookies
+2025-07-29 15:09:15,838 - app.main - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:15,838 - app.main - INFO -    ├─ Current user_id cookie: None
+2025-07-29 15:09:15,838 - app.main - INFO -    ├─ New user_id: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:15,838 - app.main - INFO -    ├─ User ID changed, updating cookie
+2025-07-29 15:09:15,838 - app.main - INFO - 👤 USER COOKIE: Setting user cookie: user_id
+2025-07-29 15:09:15,838 - app.main - INFO -    ├─ Cookie name: user_id
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Value: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Expires in: 3600 seconds
+2025-07-29 15:09:15,839 - app.main - INFO -    └─ HttpOnly: True
+2025-07-29 15:09:15,839 - app.main - INFO - ✅ USER COOKIE: Successfully set user_id cookie
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Full name from token: Ansuman Kumar
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Current user_name cookie: None
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Picture from token: True
+2025-07-29 15:09:15,839 - app.main - INFO -    └─ Current user_picture cookie: False
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ User name changed, updating cookie
+2025-07-29 15:09:15,839 - app.main - INFO - 👤 USER COOKIE: Setting user cookie: user_name
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Cookie name: user_name
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Value: Ansuman Kumar
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Expires in: 3600 seconds
+2025-07-29 15:09:15,839 - app.main - INFO -    └─ HttpOnly: True
+2025-07-29 15:09:15,839 - app.main - INFO - ✅ USER COOKIE: Successfully set user_name cookie
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ User picture changed, updating cookie
+2025-07-29 15:09:15,839 - app.main - INFO - 👤 USER COOKIE: Setting user cookie: user_picture
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Cookie name: user_picture
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Value: https://lh3.googleusercontent.com/a/ACg8ocLgDkovbOnZ1BUG5pMyOQMR-PsCt8clDzGYEVzwHTri8TwyoIGn=s96-c
+2025-07-29 15:09:15,839 - app.main - INFO -    ├─ Expires in: 3600 seconds
+2025-07-29 15:09:15,839 - app.main - INFO -    └─ HttpOnly: True
+2025-07-29 15:09:15,839 - app.main - INFO - ✅ USER COOKIE: Successfully set user_picture cookie
+2025-07-29 15:09:15,840 - app.main - INFO - ✅ USER COOKIES: User cookies updated successfully
+2025-07-29 15:09:15,840 - app.main - INFO - ✅ AUTH MIDDLEWARE: Request processing completed successfully
+INFO:     103.105.226.134:0 - "GET /notes/ HTTP/1.1" 200 OK
+2025-07-29 15:09:15,840 - app.main - INFO - ⬅️  AUTH MIDDLEWARE: Route handler completed, processing response
+2025-07-29 15:09:15,840 - app.main - INFO -    ├─ Response status: 200
+2025-07-29 15:09:15,840 - app.main - INFO -    └─ Response headers: ['content-length', 'content-type']
+2025-07-29 15:09:15,840 - app.main - INFO - 🍪 AUTH MIDDLEWARE: Updating user information cookies
+2025-07-29 15:09:15,840 - app.main - INFO - 👤 USER COOKIES: Updating user information cookies
+2025-07-29 15:09:15,840 - app.main - INFO -    ├─ User ID: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:15,840 - app.main - INFO -    ├─ Current user_id cookie: None
+2025-07-29 15:09:15,840 - app.main - INFO -    ├─ New user_id: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:15,840 - app.main - INFO -    ├─ User ID changed, updating cookie
+2025-07-29 15:09:15,840 - app.main - INFO - 👤 USER COOKIE: Setting user cookie: user_id
+2025-07-29 15:09:15,840 - app.main - INFO -    ├─ Cookie name: user_id
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Value: 56dfcd1f-2f85-4dfd-9946-3bfca435964a
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Expires in: 3600 seconds
+2025-07-29 15:09:15,841 - app.main - INFO -    └─ HttpOnly: True
+2025-07-29 15:09:15,841 - app.main - INFO - ✅ USER COOKIE: Successfully set user_id cookie
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Full name from token: Ansuman Kumar
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Current user_name cookie: None
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Picture from token: True
+2025-07-29 15:09:15,841 - app.main - INFO -    └─ Current user_picture cookie: False
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ User name changed, updating cookie
+2025-07-29 15:09:15,841 - app.main - INFO - 👤 USER COOKIE: Setting user cookie: user_name
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Cookie name: user_name
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Value: Ansuman Kumar
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Expires in: 3600 seconds
+2025-07-29 15:09:15,841 - app.main - INFO -    └─ HttpOnly: True
+2025-07-29 15:09:15,841 - app.main - INFO - ✅ USER COOKIE: Successfully set user_name cookie
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ User picture changed, updating cookie
+2025-07-29 15:09:15,841 - app.main - INFO - 👤 USER COOKIE: Setting user cookie: user_picture
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Cookie name: user_picture
+2025-07-29 15:09:15,841 - app.main - INFO -    ├─ Value: https://lh3.googleusercontent.com/a/ACg8ocLgDkovbOnZ1BUG5pMyOQMR-PsCt8clDzGYEVzwHTri8TwyoIGn=s96-c
