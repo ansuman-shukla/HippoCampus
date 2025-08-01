@@ -6,6 +6,7 @@ import Intro from "./page/IntroPage";
 import SearchResponse from "./page/SearchResultPage";
 import ResponsePage from "./page/ResponsePage";
 import SummarizePage from "./page/SummarizePage";
+import LoaderPillars from "./components/LoaderPillars";
 import './index.css';
 
 
@@ -17,7 +18,7 @@ const pageVariants = {
 };
 
 import { ReactNode, useEffect, useState } from "react";
-import { useAuth } from "./hooks/useAuth";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // Extend Window interface to include our custom property
 declare global {
@@ -42,7 +43,18 @@ const AnimatedRoutes = () => {
   const Navigate = useNavigate();
   const location = useLocation();
   const [quotes, setQuotes] = useState<string[]>([]);
-  const { checkAuthStatus } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  console.log(`🔍 APP_ROUTES: Current state - isAuthenticated: ${isAuthenticated}, isLoading: ${isLoading}, location: ${location.pathname}`);
+  console.log(`🐛 APP_ROUTES: Debug - useAuth returned:`, { isAuthenticated, isLoading, timestamp: new Date().toISOString() });
+
+  // Navigate to submit page on initial load if on root path
+  useEffect(() => {
+    if (location.pathname === '/' && isAuthenticated && !isLoading) {
+      console.log('🚀 APP_ROUTES: Initial load on root path with auth, navigating to submit');
+      Navigate('/submit');
+    }
+  }, []);
 
   // Keyboard shortcut handler for Alt+X (when extension is already open)
   useEffect(() => {
@@ -76,56 +88,38 @@ const AnimatedRoutes = () => {
     };
   }, [Navigate]);
 
-  // Helper function to validate authentication with backend
-  const validateAuthenticationWithBackend = async (): Promise<boolean> => {
-    try {
-      console.log('🔍 APP: Validating authentication with backend...');
-      const authResult = await checkAuthStatus();
-      console.log(`📊 APP: Auth validation result: ${authResult}`);
-      return authResult;
-    } catch (error) {
-      console.error('❌ APP: Auth validation failed:', error);
-      return false;
+  // No longer need duplicate auth validation - useAuth handles this
+
+  
+
+  // Handle automatic navigation for authenticated users - but only after user interaction
+  useEffect(() => {
+    console.log(`🔄 APP_ROUTES: Auth state changed - isAuthenticated: ${isAuthenticated}, isLoading: ${isLoading}, location: ${location.pathname}`);
+    
+    // Only redirect if auth fails and we're not on intro page
+    // Since we start authenticated, failed auth will set isAuthenticated to false
+    if (!isAuthenticated && !isLoading && location.pathname !== '/') {
+      console.log('❌ APP_ROUTES: User is not authenticated and on protected page, redirecting to intro');
+      Navigate('/');
     }
-  };
-
-
-  
-  useEffect(() => {
-    // Simplified auth check - only call once on mount
-    checkAuthStatus();
-  }, [checkAuthStatus]);
-
-  
+  }, [isAuthenticated, isLoading, location.pathname, Navigate]);
 
   useEffect(() => {
+    console.log(`🏗️ APP_ROUTES: handleAuthFlow useEffect triggered for location: ${location.pathname}`);
+    
     const handleAuthFlow = async () => {
+      console.log(`🔍 APP_ROUTES: Starting handleAuthFlow for location: ${location.pathname}`);
 
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      if (!tab?.url) return;
+      if (!tab?.url) {
+        console.log('❌ APP_ROUTES: No active tab URL found');
+        return;
+      }
 
-
+      console.log(`📍 APP_ROUTES: Active tab URL: ${tab.url}`);
 
       try {
-        // Check if user is authenticated via backend cookies and validate them
-        const cookie = await chrome.cookies.get({
-          url: import.meta.env.VITE_BACKEND_URL,
-          name: 'access_token',
-        });
-
-        if (cookie && location.pathname === "/") {
-          console.log('🔍 APP: Backend cookies found in handleAuthFlow, validating authentication...');
-          const isValidAuth = await validateAuthenticationWithBackend();
-          
-          if (isValidAuth) {
-            console.log('✅ APP: Authentication validated in handleAuthFlow, navigating to submit');
-            Navigate("/submit");
-          } else {
-            console.log('❌ APP: Authentication validation failed in handleAuthFlow, staying on intro page');
-            // Don't navigate if auth validation fails
-          }
-        }
 
         // Load quotes from localStorage or fetch from backend
         if(localStorage.getItem("quotes")){
@@ -213,13 +207,20 @@ const AnimatedRoutes = () => {
       chrome.cookies.onChanged.removeListener(handleCookieChange);
       chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
     };
-  }, []);
+  }, [isAuthenticated, isLoading, Navigate, location.pathname]);
 
-
-
-
-
-
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    console.log('⏳ APP_ROUTES: Showing loading screen while checking authentication');
+    return (
+      <div className="h-[500px] w-[420px] flex items-center justify-center">
+        <div className="flex flex-col items-center text-center space-y-4">
+          <LoaderPillars />
+          <p className="text-lg text-gray-600 font-medium">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence mode="wait">
@@ -253,11 +254,13 @@ const AnimatedRoutes = () => {
 
 const App = () => {
   return (
-    <Router>
-      <div className="flex items-center justify-center bg-transparent">
-        <AnimatedRoutes />
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="flex items-center justify-center bg-transparent">
+          <AnimatedRoutes />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 };
 

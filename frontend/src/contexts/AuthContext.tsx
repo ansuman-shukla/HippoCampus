@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '../supabaseClient';
 import { getAuthStatus, logout as authUtilsLogout } from '../utils/authUtils';
 
@@ -27,28 +27,36 @@ export interface AuthState {
   errorType?: string;
 }
 
-// Global auth check state to prevent multiple concurrent calls across all hook instances
+interface AuthContextType extends AuthState {
+  signIn: (email: string, password: string) => Promise<any>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<any>;
+  signOut: () => Promise<any>;
+  refreshToken: () => Promise<any>;
+  checkAuthStatus: () => Promise<boolean>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Global auth check state to prevent multiple concurrent calls
 let globalAuthCheckInProgress = false;
 let globalAuthCheckPromise: Promise<boolean> | null = null;
-
-// Silent background auth check - doesn't update loading state
 let silentAuthCheck: Promise<boolean> | null = null;
 
-export const useAuth = () => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
-    isLoading: true, // Start with true to prevent intro page flash
-    isAuthenticated: false,
+    isLoading: false,  // Start with loading false - auth check happens eagerly
+    isAuthenticated: true,  // Start as authenticated to prevent intro page flash, will correct if needed
     error: null,
     tokenRefreshed: false
   });
-  
-  // Add debugging for state changes
-  console.log('🐛 USE_AUTH: Hook called with current state:', {
+
+  console.log('🌐 AUTH_CONTEXT: Provider render with state:', {
     isAuthenticated: authState.isAuthenticated,
     isLoading: authState.isLoading,
     hasUser: !!authState.user,
-    error: authState.error
+    error: authState.error,
+    timestamp: new Date().toISOString()
   });
 
   // Silent background auth check that doesn't show loading states
@@ -59,15 +67,14 @@ export const useAuth = () => {
 
     silentAuthCheck = (async () => {
       try {
-        console.log('🔍 USE_AUTH: Starting silent background auth check');
+        console.log('🔍 AUTH_CONTEXT: Starting silent background auth check');
         const authResult = await getAuthStatus();
         
         if (authResult.success && authResult.user) {
-          console.log('✅ USE_AUTH: Silent auth check successful');
+          console.log('✅ AUTH_CONTEXT: Silent auth check successful');
           console.log('   ├─ User:', authResult.user);
-          console.log('   └─ Updating authentication state...');
+          console.log('   └─ Updating global authentication state...');
           
-          // Use synchronous state update to ensure immediate availability
           const newState = {
             user: authResult.user as User,
             isAuthenticated: true,
@@ -77,18 +84,12 @@ export const useAuth = () => {
           };
           
           setAuthState(newState);
-          console.log('   ├─ Auth state updated synchronously');
+          console.log('   ├─ Global auth state updated');
           console.log('   └─ New isAuthenticated value:', newState.isAuthenticated);
-          console.log('   ├─ Triggering forced re-render...');
-          
-          // Force a micro-task to ensure React processes the state update
-          setTimeout(() => {
-            console.log('   └─ Micro-task: State should be updated now');
-          }, 0);
           
           return true;
         } else {
-          console.log('❌ USE_AUTH: Silent auth check failed:', authResult.error);
+          console.log('❌ AUTH_CONTEXT: Silent auth check failed:', authResult.error);
           const newState = {
             user: null,
             isAuthenticated: false,
@@ -100,7 +101,7 @@ export const useAuth = () => {
           return false;
         }
       } catch (error: any) {
-        console.error('💥 USE_AUTH: Silent auth check failed:', error);
+        console.error('💥 AUTH_CONTEXT: Silent auth check failed:', error);
         const newState = {
           user: null,
           isAuthenticated: false,
@@ -118,55 +119,52 @@ export const useAuth = () => {
     return await silentAuthCheck;
   }, []);
 
-  // Check authentication status from backend (single source of truth)
-  // Backend middleware handles token validation, refresh, and user management automatically
+  // Check authentication status from backend
   const checkAuthStatus = useCallback(async () => {
-    // Prevent multiple concurrent calls globally
     if (globalAuthCheckInProgress && globalAuthCheckPromise) {
-      console.log('🔄 USE_AUTH: Global auth check already in progress, waiting for result');
+      console.log('🔄 AUTH_CONTEXT: Global auth check already in progress, waiting for result');
       return await globalAuthCheckPromise;
     }
 
-    // Create a promise for this auth check
     globalAuthCheckPromise = (async () => {
       try {
         globalAuthCheckInProgress = true;
-        console.log('🔍 USE_AUTH: Starting auth status check');
+        console.log('🔍 AUTH_CONTEXT: Starting auth status check');
         setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const authResult = await getAuthStatus();
+        const authResult = await getAuthStatus();
       
-      if (authResult.success && authResult.user) {
-        console.log('✅ USE_AUTH: Auth status check successful');
-        setAuthState({
-          user: authResult.user as User,
-          isLoading: false,
-          isAuthenticated: true,
-          error: null,
-          tokenRefreshed: false
-        });
-        return true;
-      } else {
-        console.log('❌ USE_AUTH: Auth status check failed:', authResult.error);
+        if (authResult.success && authResult.user) {
+          console.log('✅ AUTH_CONTEXT: Auth status check successful');
+          setAuthState({
+            user: authResult.user as User,
+            isLoading: false,
+            isAuthenticated: true,
+            error: null,
+            tokenRefreshed: false
+          });
+          return true;
+        } else {
+          console.log('❌ AUTH_CONTEXT: Auth status check failed:', authResult.error);
+          setAuthState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+            error: authResult.error || null,
+            tokenRefreshed: false
+          });
+          return false;
+        }
+      } catch (error: any) {
+        console.error('💥 AUTH_CONTEXT: Auth status check failed:', error);
         setAuthState({
           user: null,
           isLoading: false,
           isAuthenticated: false,
-          error: authResult.error || null,
+          error: 'Failed to check authentication status',
+          errorType: 'network_error',
           tokenRefreshed: false
         });
-        return false;
-      }
-    } catch (error: any) {
-      console.error('💥 USE_AUTH: Auth status check failed:', error);
-      setAuthState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false,
-        error: 'Failed to check authentication status',
-        errorType: 'network_error',
-        tokenRefreshed: false
-      });
         return false;
       } finally {
         globalAuthCheckInProgress = false;
@@ -197,10 +195,7 @@ export const useAuth = () => {
       }
 
       if (data.session?.access_token) {
-        // Set tokens in cookies for backend communication
         await setAuthCookies(data.session.access_token, data.session.refresh_token);
-
-        // Verify authentication with backend (backend middleware will set secure httpOnly cookies)
         await checkAuthStatus();
         return { success: true, data: data.session };
       }
@@ -241,7 +236,6 @@ export const useAuth = () => {
         return { success: false, error: error.message };
       }
 
-      // For email confirmation flow
       if (data.user && !data.session) {
         setAuthState((prev: AuthState) => ({ ...prev, isLoading: false }));
         return { 
@@ -251,7 +245,6 @@ export const useAuth = () => {
         };
       }
 
-      // Auto sign-in after signup
       if (data.session?.access_token) {
         await setAuthCookies(data.session.access_token, data.session.refresh_token);
         await checkAuthStatus();
@@ -272,14 +265,12 @@ export const useAuth = () => {
 
   // Sign out using comprehensive logout from authUtils
   const signOut = useCallback(async () => {
-    console.log('🚪 USE_AUTH: Starting signOut process');
+    console.log('🚪 AUTH_CONTEXT: Starting signOut process');
     setAuthState((prev: AuthState) => ({ ...prev, isLoading: true }));
     
     try {
-      // Use the comprehensive logout function from authUtils
       const result = await authUtilsLogout();
       
-      // Always update auth state to logged out regardless of result
       setAuthState({
         user: null,
         isLoading: false,
@@ -287,11 +278,10 @@ export const useAuth = () => {
         error: null
       });
       
-      console.log('✅ USE_AUTH: SignOut completed successfully');
+      console.log('✅ AUTH_CONTEXT: SignOut completed successfully');
       return result;
     } catch (error: any) {
-      console.error('💥 USE_AUTH: SignOut failed:', error);
-      // Still set state to logged out for consistency
+      console.error('💥 AUTH_CONTEXT: SignOut failed:', error);
       setAuthState({
         user: null,
         isLoading: false,
@@ -307,20 +297,18 @@ export const useAuth = () => {
     }
   }, []);
 
-  // Manually refresh token (backend auto-refreshes via middleware)
+  // Manually refresh token
   const refreshToken = useCallback(async () => {
     try {
       const response = await fetch(`${getBackendUrl()}/auth/refresh`, {
         method: 'POST',
-        credentials: 'include', // Backend reads refresh_token from cookies
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         }
       });
 
       if (response.ok) {
-        // Backend automatically sets new cookies in response headers
-        // Update auth state
         await checkAuthStatus();
         return { success: true };
       }
@@ -341,16 +329,14 @@ export const useAuth = () => {
     }
   }, [checkAuthStatus]);
 
-  // Helper function to set cookies across domains (matching backend expectations)
+  // Helper function to set cookies
   const setAuthCookies = async (accessToken: string, refreshToken?: string) => {
     if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
       try {
-        // Set cookies for backend API domain with exact settings backend expects
         const apiUrl = import.meta.env.VITE_BACKEND_URL;
         const apiDomain = new URL(import.meta.env.VITE_BACKEND_URL).hostname;
         const isSecure = apiUrl.startsWith('https://');
 
-        // Access token cookie (expires in 1 hour, matching backend)
         await window.chrome.cookies.set({
           url: apiUrl,
           name: 'access_token',
@@ -359,11 +345,10 @@ export const useAuth = () => {
           domain: apiDomain,
           secure: isSecure,
           sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
-          httpOnly: false, // Chrome extension can't set httpOnly, backend middleware handles security
-          expirationDate: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+          httpOnly: false,
+          expirationDate: Math.floor(Date.now() / 1000) + 3600
         });
 
-        // Refresh token cookie (expires in 7 days, matching backend)
         if (refreshToken) {
           await window.chrome.cookies.set({
             url: apiUrl,
@@ -373,89 +358,36 @@ export const useAuth = () => {
             domain: apiDomain,
             secure: isSecure,
             sameSite: 'no_restriction' as chrome.cookies.SameSiteStatus,
-            httpOnly: false, // Chrome extension can't set httpOnly, backend middleware handles security
-            expirationDate: Math.floor(Date.now() / 1000) + 604800 // 7 days
+            httpOnly: false,
+            expirationDate: Math.floor(Date.now() / 1000) + 604800
           });
         }
 
         console.log('Extension auth cookies set for backend');
-
       } catch (error) {
         console.error('Error setting auth cookies:', error);
       }
     }
   };
 
-  // Enhanced helper function to clear cookies across multiple domains
-  const clearAuthCookies = async () => {
-    if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
-      try {
-        console.log('🧹 CLEAR_COOKIES: Clearing auth cookies across all domains');
-        
-        // All domains where cookies might exist
-        const domains = [
-          import.meta.env.VITE_BACKEND_URL,
-          'https://extension-auth.vercel.app',
-          'https://hippocampus-1.onrender.com',
-          'http://127.0.0.1:8000'
-        ];
-        
-        // All possible auth cookie names
-        const authCookieNames = [
-          'access_token',    // JWT access token
-          'refresh_token',   // JWT refresh token
-          'user_id',         // User ID
-          'user_name',       // User full name
-          'user_picture'     // User picture
-        ];
-
-        for (const domain of domains) {
-          console.log(`   ├─ Clearing cookies from: ${domain}`);
-          for (const name of authCookieNames) {
-            try {
-              await window.chrome.cookies.remove({
-                url: domain,
-                name
-              });
-              console.log(`   │  ✓ Cleared ${name} from ${domain}`);
-            } catch (error) {
-              console.warn(`   │  ⚠️  Failed to clear ${name} from ${domain}:`, error);
-            }
-          }
-        }
-
-        console.log('✅ CLEAR_COOKIES: All domains processed');
-      } catch (error) {
-        console.error('❌ CLEAR_COOKIES: Error clearing auth cookies:', error);
-      }
-    }
-  };
-
-  // Check for existing auth on mount and listen for auth changes
+  // Initialize authentication on mount
   useEffect(() => {
     const initAuth = async () => {
-      // Use silent auth check on init to avoid loading screen
-      // This will only update auth state without showing loading
       await silentBackgroundAuthCheck();
     };
 
     initAuth();
 
-    // Listen for Supabase auth changes (but avoid redundant checks)
+    // Listen for Supabase auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: string, session: any) => {
         console.log('Supabase auth event:', event);
         
-        // Only handle actual sign-in/out events, not initial session events
         if (event === 'SIGNED_IN' && session?.access_token && !globalAuthCheckInProgress) {
-          console.log('🔑 USE_AUTH: Processing SIGNED_IN event');
+          console.log('🔑 AUTH_CONTEXT: Processing SIGNED_IN event');
           await setAuthCookies(session.access_token, session.refresh_token);
-          // Don't call checkAuthStatus here as it will be called by the initial auth check
         } else if (event === 'SIGNED_OUT') {
-          console.log('🚪 USE_AUTH: Processing SIGNED_OUT event');
-          await clearAuthCookies();
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          console.log('🚪 AUTH_CONTEXT: Processing SIGNED_OUT event');
           setAuthState({
             user: null,
             isLoading: false,
@@ -463,66 +395,17 @@ export const useAuth = () => {
             error: null
           });
         } else if (event === 'INITIAL_SESSION') {
-          console.log('🔄 USE_AUTH: INITIAL_SESSION event (ignoring to prevent redundant checks)');
+          console.log('🔄 AUTH_CONTEXT: INITIAL_SESSION event (ignoring to prevent redundant checks)');
         }
       }
     );
 
-    // Enhanced session monitoring for extension environment
-    let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = null;
-    let messageListener: ((message: any, sender: any, sendResponse: any) => void) | null = null;
-
-    if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
-      // Monitor backend cookie changes
-      cookieChangeListener = (changeInfo: chrome.cookies.CookieChangeInfo) => {
-        if (changeInfo.cookie.name === "access_token" && 
-            changeInfo.cookie.domain.includes(new URL(import.meta.env.VITE_BACKEND_URL).hostname)) {
-          
-          if (changeInfo.removed) {
-            console.log('🚫 USE_AUTH: Backend access token was removed, updating auth state');
-            setAuthState(prev => ({
-              ...prev,
-              user: null,
-              isAuthenticated: false,
-              error: 'Session expired'
-            }));
-          }
-        }
-      };
-
-      // Listen for background script auth failure notifications
-      messageListener = (message: any, _sender: any, sendResponse: any) => {
-        if (message.action === "authenticationFailed") {
-          console.log('🚫 USE_AUTH: Received authentication failure notification');
-          setAuthState({
-            user: null,
-            isLoading: false,
-            isAuthenticated: false,
-            error: 'Authentication failed. Please log in again.',
-            errorType: 'session_expired'
-          });
-          sendResponse({ received: true });
-        }
-      };
-
-      chrome.cookies.onChanged.addListener(cookieChangeListener);
-      chrome.runtime.onMessage.addListener(messageListener);
-    }
-
     return () => {
       subscription.unsubscribe();
-      
-      // Clean up extension-specific listeners
-      if (cookieChangeListener && chrome.cookies?.onChanged) {
-        chrome.cookies.onChanged.removeListener(cookieChangeListener);
-      }
-      if (messageListener && chrome.runtime?.onMessage) {
-        chrome.runtime.onMessage.removeListener(messageListener);
-      }
     };
   }, [silentBackgroundAuthCheck]);
 
-  return {
+  const contextValue: AuthContextType = {
     ...authState,
     signIn,
     signUp,
@@ -530,4 +413,27 @@ export const useAuth = () => {
     refreshToken,
     checkAuthStatus
   };
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  
+  console.log('🌐 USE_AUTH_CONTEXT: Hook called with global state:', {
+    isAuthenticated: context.isAuthenticated,
+    isLoading: context.isLoading,
+    hasUser: !!context.user,
+    error: context.error,
+    timestamp: new Date().toISOString()
+  });
+  
+  return context;
 };

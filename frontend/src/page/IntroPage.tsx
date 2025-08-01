@@ -4,30 +4,53 @@ import LoaderPillars from '../components/LoaderPillars';
 import '../index.css'
 import { useNavigate } from 'react-router-dom';
 import {motion} from 'framer-motion';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 
 const Intro = () => {
     const Navigate = useNavigate();
-    const { checkAuthStatus } = useAuth();
+    const { isAuthenticated, checkAuthStatus } = useAuth();
     const [isCheckingAuth, setIsCheckingAuth] = useState(false);
-
-    // Helper function to validate authentication with backend
-    const validateAuthenticationWithBackend = async (): Promise<boolean> => {
-        try {
-            console.log('🔍 INTRO: Validating authentication with backend...');
-            const authResult = await checkAuthStatus();
-            console.log(`📊 INTRO: Auth validation result: ${authResult}`);
-            return authResult;
-        } catch (error) {
-            console.error('❌ INTRO: Auth validation failed:', error);
-            return false;
-        }
-    };
-
+    
+    console.log('🐛 INTRO: Component render with state:', {
+        isAuthenticated,
+        isCheckingAuth,
+        timestamp: new Date().toISOString()
+    });
 
     const handleAuth = async () => {
-        console.log('🚀 INTRO: Get Started clicked, beginning comprehensive auth check...');
+        console.log('🚀 INTRO: Get Started clicked, checking authentication status...');
+        console.log('   ├─ Current isAuthenticated state:', isAuthenticated);
+        
+        // Check both auth state and cookies for immediate authentication status
+        const cookie = await chrome.cookies.get({
+            url: import.meta.env.VITE_BACKEND_URL,
+            name: 'access_token',
+        });
+        
+        console.log('   ├─ Backend cookie present:', !!cookie);
+        
+        // If either React state or cookie shows authentication, proceed to submit
+        if (isAuthenticated || cookie) {
+            console.log('✅ INTRO: Already authenticated (state or cookie), navigating to submit');
+            Navigate("/submit");
+            return;
+        }
+        
+        // Try a quick auth status check to update React state
+        console.log('   ├─ No immediate auth found, checking backend status...');
+        try {
+            const authResult = await checkAuthStatus();
+            if (authResult) {
+                console.log('✅ INTRO: Backend auth successful, navigating to submit');
+                Navigate("/submit");
+                return;
+            }
+        } catch (error) {
+            console.log('   ├─ Backend auth check failed:', error);
+        }
+
+        console.log('🚀 INTRO: Get Started clicked, beginning auth flow...');
         setIsCheckingAuth(true);
         
         try {
@@ -51,28 +74,6 @@ const Intro = () => {
                 }
             }
 
-            // First check if we already have backend tokens and validate them
-            const backendCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
-                chrome.cookies.get({
-                    url: import.meta.env.VITE_BACKEND_URL,
-                    name: 'access_token',
-                }, (cookie) => {
-                    resolve(cookie);
-                });
-            });
-
-            if (backendCookie) {
-                console.log('🔍 INTRO: Backend cookies found in handleAuth, validating authentication...');
-                const isValidAuth = await validateAuthenticationWithBackend();
-                
-                if (isValidAuth) {
-                    console.log('✅ INTRO: Authentication validated in handleAuth, navigating to submit');
-                    Navigate("/submit");
-                    return;
-                } else {
-                    console.log('❌ INTRO: Authentication validation failed in handleAuth, continuing with external auth check');
-                }
-            }
 
             // Check for external auth cookies with improved logic
             const externalCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
