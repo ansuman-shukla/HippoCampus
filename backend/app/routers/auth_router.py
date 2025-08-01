@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from app.utils.jwt import TokenExpiredError
-from app.main import handle_token_refresh, update_user_cookies, update_token_cookies
+from app.helpers.auth_utils import handle_token_refresh, update_user_cookies, update_token_cookies
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from app.utils.jwt import refresh_access_token, decodeJWT
