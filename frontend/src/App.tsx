@@ -240,52 +240,27 @@ const AnimatedRoutes = () => {
             }
             
             if (verificationCookie) {
-              console.log('✅ APP: Backend cookies set successfully, checking auth status to populate localStorage');
+              console.log('✅ APP: Backend cookies set successfully. Waiting 1.5s before final validation...');
               
-              // Add a longer delay to ensure cookies are properly set and propagated
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
-              // Try to check auth status with retry logic
-              let authSuccess = false;
-              let authRetryCount = 0;
-              const maxAuthRetries = 3;
-              
-              while (!authSuccess && authRetryCount < maxAuthRetries) {
-                try {
-                  authSuccess = await checkAuthStatus();
-                  if (authSuccess) {
-                    console.log('✅ APP: Auth status verified, cleaning up and navigating');
-                    
-                    // Clean up external auth cookies after successful transfer
-                    chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
-                    chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
-                    
-                    // Navigate to submit page
-                    Navigate("/submit");
-                    break;
-                  } else {
-                    authRetryCount++;
-                    console.log(`⚠️  APP: Auth status check failed, retry ${authRetryCount}/${maxAuthRetries}`);
-                    if (authRetryCount < maxAuthRetries) {
-                      await new Promise(resolve => setTimeout(resolve, 1000 * authRetryCount));
-                    }
-                  }
-                } catch (error) {
-                  authRetryCount++;
-                  console.log(`⚠️  APP: Auth status check error, retry ${authRetryCount}/${maxAuthRetries}:`, error);
-                  if (authRetryCount < maxAuthRetries) {
-                    await new Promise(resolve => setTimeout(resolve, 1000 * authRetryCount));
-                  }
+              // --- FIX #2: ADD STRATEGIC DELAY ---
+              // This is the critical fix. We wait 1.5 seconds before verifying.
+              // This gives the backend enough time to create the new user in the database.
+              setTimeout(async () => {
+                console.log('✅ APP: Delay finished. Now checking auth status and navigating.');
+                const authSuccess = await checkAuthStatus();
+                
+                if (authSuccess) {
+                  console.log('✅ APP: Auth status verified after delay, cleaning up and navigating');
+                  chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
+                  chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
+                  Navigate("/submit");
+                } else {
+                  console.error('❌ APP: Auth status check FAILED even after delay.');
                 }
-              }
+                window.authTransferInProgress = false; // Release lock here
+              }, 1500); // 1.5 second delay
               
-              if (!authSuccess) {
-                console.warn('⚠️  APP: Auth status check failed after all retries, but cookies are set. Proceeding anyway.');
-                // Clean up external auth cookies and navigate anyway
-                chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
-                chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
-                Navigate("/submit");
-              }
+              return; // Exit early to prevent the original retry logic from running
             } else {
               throw new Error('Cookie verification failed after retries');
             }
