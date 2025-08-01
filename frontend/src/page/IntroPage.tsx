@@ -5,7 +5,7 @@ import '../index.css'
 import { useNavigate } from 'react-router-dom';
 import {motion} from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const Intro = () => {
     const Navigate = useNavigate();
@@ -18,21 +18,25 @@ const Intro = () => {
         timestamp: new Date().toISOString()
     });
 
+// Auto-navigate users based on cookie presence
+    useEffect(() => {
+        chrome.cookies.get({url: import.meta.env.VITE_BACKEND_URL, name: 'access_token'}, (cookie) => {
+            if (cookie && cookie.value) {
+                console.log('✅ INTRO: Cookie found, auto-navigating to submit');
+                Navigate('/submit');
+            } else {
+                console.log('ℹ️ INTRO: No cookie found, staying on Get Started page');
+            }
+        });
+    }, [Navigate]);
+
     const handleAuth = async () => {
         console.log('🚀 INTRO: Get Started clicked, checking authentication status...');
         console.log('   ├─ Current isAuthenticated state:', isAuthenticated);
         
-        // Check both auth state and cookies for immediate authentication status
-        const cookie = await chrome.cookies.get({
-            url: import.meta.env.VITE_BACKEND_URL,
-            name: 'access_token',
-        });
-        
-        console.log('   ├─ Backend cookie present:', !!cookie);
-        
-        // If either React state or cookie shows authentication, proceed to submit
-        if (isAuthenticated || cookie) {
-            console.log('✅ INTRO: Already authenticated (state or cookie), navigating to submit');
+        // If already authenticated, navigate directly
+        if (isAuthenticated) {
+            console.log('✅ INTRO: Already authenticated, navigating to submit');
             Navigate("/submit");
             return;
         }

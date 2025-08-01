@@ -48,14 +48,6 @@ const AnimatedRoutes = () => {
   console.log(`🔍 APP_ROUTES: Current state - isAuthenticated: ${isAuthenticated}, isLoading: ${isLoading}, location: ${location.pathname}`);
   console.log(`🐛 APP_ROUTES: Debug - useAuth returned:`, { isAuthenticated, isLoading, timestamp: new Date().toISOString() });
 
-  // Navigate to submit page on initial load if on root path
-  useEffect(() => {
-    if (location.pathname === '/' && isAuthenticated && !isLoading) {
-      console.log('🚀 APP_ROUTES: Initial load on root path with auth, navigating to submit');
-      Navigate('/submit');
-    }
-  }, []);
-
   // Keyboard shortcut handler for Alt+X (when extension is already open)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -213,10 +205,21 @@ const AnimatedRoutes = () => {
   if (isLoading) {
     console.log('⏳ APP_ROUTES: Showing loading screen while checking authentication');
     return (
-      <div className="h-[500px] w-[420px] flex items-center justify-center">
-        <div className="flex flex-col items-center text-center space-y-4">
-          <LoaderPillars />
-          <p className="text-lg text-gray-600 font-medium">Checking authentication...</p>
+      <div className="h-[500px] w-[100%] relative border border-black rounded-lg overflow-hidden">
+        {/* Background with colored sections */}
+        <div className="absolute inset-0 flex">
+          <div className="w-1/4 bg-[var(--primary-orange)]" />
+          <div className="w-1/4 bg-[var(--primary-green)]" />
+          <div className="w-1/4 bg-[var(--primary-yellow)]" />
+          <div className="w-1/4 bg-[var(--primary-blue)]" />
+        </div>
+
+        {/* Content */}
+        <div className="relative h-full w-full flex items-center justify-center">
+          <div className="flex flex-col items-center text-center space-y-8">
+            <p className="text-4xl nyr max-w-md">"Setting things up for you..."</p>
+            <LoaderPillars />
+          </div>
         </div>
       </div>
     );

@@ -45,8 +45,8 @@ let silentAuthCheck: Promise<boolean> | null = null;
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
-    isLoading: false,  // Start with loading false - auth check happens eagerly
-    isAuthenticated: true,  // Start as authenticated to prevent intro page flash, will correct if needed
+    isLoading: true,  // Start with loading true only for initial cookie check
+    isAuthenticated: false,  // Will be set based on cookie presence
     error: null,
     tokenRefreshed: false
   });
@@ -370,10 +370,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Initialize authentication on mount
+  // Initialize authentication on mount with cookie-first approach
   useEffect(() => {
     const initAuth = async () => {
-      await silentBackgroundAuthCheck();
+      console.log('🚀 AUTH_CONTEXT: Starting initial authentication check');
+      
+      // First, check if we have cookies
+      if (typeof window !== 'undefined' && window.chrome && window.chrome.cookies) {
+        chrome.cookies.get({
+          url: import.meta.env.VITE_BACKEND_URL,
+          name: 'access_token'
+        }, async (cookie) => {
+          if (cookie && cookie.value) {
+            console.log('🍪 AUTH_CONTEXT: Access token cookie found, assuming authenticated');
+            // Set authenticated state immediately based on cookie presence
+            setAuthState({
+              user: null, // Will be populated by background check
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+              tokenRefreshed: false
+            });
+            
+            // Perform silent background validation
+            console.log('🔍 AUTH_CONTEXT: Starting background validation of token');
+            await silentBackgroundAuthCheck();
+          } else {
+            console.log('🚫 AUTH_CONTEXT: No access token cookie found');
+            setAuthState({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+              tokenRefreshed: false
+            });
+          }
+        });
+      } else {
+        // Fallback for non-extension environments
+        await silentBackgroundAuthCheck();
+      }
     };
 
     initAuth();
