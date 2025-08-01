@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
+from app.utils.jwt import TokenExpiredError
+from app.main import handle_token_refresh, update_user_cookies, update_token_cookies
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from app.utils.jwt import refresh_access_token, decodeJWT
@@ -195,7 +197,8 @@ async def logout(request: Request):
 @router.get("/status")
 async def auth_status(request: Request):
     """
-    Check authentication status and validate current token
+    Check authentication status and validate current token.
+    Now with token refresh capability.
     """
     logger.info(f"🔍 AUTH STATUS: Checking authentication status")
     logger.info(f"   ├─ Request IP: {request.client.host if request.client else 'Unknown'}")
@@ -203,13 +206,7 @@ async def auth_status(request: Request):
     
     access_token = request.cookies.get("access_token")
     refresh_token = request.cookies.get("refresh_token")
-    
-    logger.info(f"🍪 AUTH STATUS: Analyzing authentication state")
-    logger.info(f"   ├─ Access token present: {bool(access_token)}")
-    logger.info(f"   ├─ Refresh token present: {bool(refresh_token)}")
-    logger.info(f"   ├─ Access token length: {len(access_token) if access_token else 0}")
-    logger.info(f"   └─ Refresh token length: {len(refresh_token) if refresh_token else 0}")
-    
+
     result = {
         "has_access_token": bool(access_token),
         "has_refresh_token": bool(refresh_token),
@@ -217,37 +214,75 @@ async def auth_status(request: Request):
         "user_id": None,
         "token_valid": False
     }
-    
-    if access_token:
-        logger.info(f"🔑 AUTH STATUS: Validating access token")
-        try:
-            payload = await decodeJWT(access_token)
-            user_metadata = payload.get("user_metadata", {})
-            
-            logger.info(f"✅ AUTH STATUS: Token validation successful")
-            logger.info(f"   ├─ User ID: {payload.get('sub')}")
-            logger.info(f"   ├─ Email: {payload.get('email')}")
-            logger.info(f"   ├─ Full name: {user_metadata.get('full_name')}")
-            logger.info(f"   └─ Token expires: {payload.get('exp')}")
-            
-            result.update({
-                "is_authenticated": True,
-                "user_id": payload.get("sub"),
-                "token_valid": True,
-                "user_email": payload.get("email"),
-                "user_name": user_metadata.get("full_name"),
-                "full_name": user_metadata.get("full_name"),
-                "user_picture": user_metadata.get("picture"),
-                "picture": user_metadata.get("picture"),
-                "token_expires": payload.get("exp")
-            })
-        except Exception as e:
-            logger.warning(f"❌ AUTH STATUS: Token validation failed: {str(e)}")
-            logger.warning(f"   ├─ Error type: {type(e).__name__}")
-            logger.warning(f"   └─ Token may be expired or invalid")
-            result["token_error"] = str(e)
-    else:
+
+    if not access_token:
         logger.info(f"ℹ️  AUTH STATUS: No access token to validate")
+        return result
+
+    try:
+        # Attempt to decode the current access token
+        payload = await decodeJWT(access_token)
+        user_metadata = payload.get("user_metadata", {})
+        
+        logger.info(f"✅ AUTH STATUS: Token validation successful")
+        result.update({
+            "is_authenticated": True,
+            "user_id": payload.get("sub"),
+            "token_valid": True,
+            "user_email": payload.get("email"),
+            "user_name": user_metadata.get("full_name"),
+            "full_name": user_metadata.get("full_name"),
+            "user_picture": user_metadata.get("picture"),
+            "picture": user_metadata.get("picture"),
+            "token_expires": payload.get("exp")
+        })
+        
+        # Create a dummy response to update cookies if needed
+        response = JSONResponse(content=result)
+        update_user_cookies(response, request, result["user_id"], payload)
+        return response
+
+    except TokenExpiredError:
+        logger.warning(f"⏰ AUTH STATUS: Token expired, attempting refresh...")
+        if not refresh_token:
+            logger.warning("❌ AUTH STATUS: No refresh token available for refresh.")
+            result["token_error"] = "Token expired, no refresh token"
+            return JSONResponse(content=result, status_code=401)
+
+        # --- THIS IS THE NEW LOGIC ---
+        new_access_token, new_refresh_token, error_response = await handle_token_refresh(refresh_token)
+
+        if error_response:
+            logger.error(f"❌ AUTH STATUS: Token refresh failed during status check.")
+            return error_response
+
+        # If refresh is successful, decode the new token and return an authenticated status
+        payload = await decodeJWT(new_access_token)
+        user_metadata = payload.get("user_metadata", {})
+        result.update({
+            "is_authenticated": True,
+            "user_id": payload.get("sub"),
+            "token_valid": True,
+            "user_email": payload.get("email"),
+            "user_name": user_metadata.get("full_name"),
+            "full_name": user_metadata.get("full_name"),
+            "user_picture": user_metadata.get("picture"),
+            "picture": user_metadata.get("picture"),
+            "token_expires": payload.get("exp")
+        })
+        
+        # Create a response and set the new cookies for the client
+        response = JSONResponse(content=result)
+        update_token_cookies(response, new_access_token, new_refresh_token, refresh_token)
+        update_user_cookies(response, request, result["user_id"], payload)
+        logger.info("✅ AUTH STATUS: Refresh successful, returning authenticated status with new cookies.")
+        return response
+        # --- END OF NEW LOGIC ---
+
+    except Exception as e:
+        logger.warning(f"❌ AUTH STATUS: Token validation failed with unexpected error: {str(e)}")
+        result["token_error"] = str(e)
+        return JSONResponse(content=result, status_code=401)
     
     logger.info(f"📊 AUTH STATUS: Status check completed")
     logger.info(f"   ├─ Authenticated: {result.get('is_authenticated')}")

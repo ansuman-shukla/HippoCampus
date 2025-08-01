@@ -5,12 +5,12 @@ import '../index.css'
 import { useNavigate } from 'react-router-dom';
 import {motion} from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 const Intro = () => {
     const Navigate = useNavigate();
     const { checkAuthStatus } = useAuth();
-    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(false);
 
     // Helper function to validate authentication with backend
     const validateAuthenticationWithBackend = async (): Promise<boolean> => {
@@ -25,80 +25,6 @@ const Intro = () => {
         }
     };
 
-    // Check if user is already authenticated on component mount
-    useEffect(() => {
-        const checkExistingAuth = async () => {
-            try {
-                // Check backend cookies first and validate them
-                const backendCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
-                    chrome.cookies.get({
-                        url: import.meta.env.VITE_BACKEND_URL,
-                        name: 'access_token',
-                    }, (cookie) => {
-                        resolve(cookie);
-                    });
-                });
-
-                if (backendCookie) {
-                    console.log('🔍 INTRO: Backend cookies found, validating authentication...');
-                    const isValidAuth = await validateAuthenticationWithBackend();
-                    
-                    if (isValidAuth) {
-                        console.log('✅ INTRO: Authentication validated successfully, navigating to submit page');
-                        Navigate("/submit");
-                        return;
-                    } else {
-                        console.log('❌ INTRO: Authentication validation failed, cookies may be expired');
-                        // Don't navigate, continue with the flow to check other auth methods
-                    }
-                }
-
-                // Check for external auth cookies
-                const externalCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
-                    chrome.cookies.get({
-                        url: import.meta.env.VITE_API_URL,
-                        name: 'access_token',
-                    }, (cookie) => {
-                        resolve(cookie);
-                    });
-                });
-
-                if (externalCookie) {
-                    console.log('External auth detected, checking auth status');
-                    await checkAuthStatus();
-                    Navigate("/submit");
-                    return;
-                }
-
-                // Check if we have a refresh token that could be used
-                const refreshCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {
-                    chrome.cookies.get({
-                        url: import.meta.env.VITE_BACKEND_URL,
-                        name: 'refresh_token',
-                    }, (cookie) => {
-                        resolve(cookie);
-                    });
-                });
-
-                if (refreshCookie) {
-                    console.log('Refresh token found, checking auth status');
-                    const authResult = await checkAuthStatus();
-                    if (authResult) {
-                        Navigate("/submit");
-                        return;
-                    }
-                }
-
-                console.log('No authentication found, showing intro page');
-            } catch (error) {
-                console.error('Error checking existing auth:', error);
-            } finally {
-                setIsCheckingAuth(false);
-            }
-        };
-
-        checkExistingAuth();
-    }, [Navigate, checkAuthStatus]);
 
     const handleAuth = async () => {
         console.log('🚀 INTRO: Get Started clicked, beginning comprehensive auth check...');
