@@ -92,30 +92,54 @@ const AnimatedRoutes = () => {
 
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
+    console.log('🔍 STEP 200: Starting external authentication check');
+    console.log('   ├─ Function: App.checkForExternalAuth()');
+    console.log('   ├─ Current location:', location.pathname);
+    console.log('   └─ Purpose: Detect and process external auth cookies');
+
     // Prevent multiple simultaneous auth checks
     if (authCheckInProgress) {
-      console.log('⚠️  APP: Auth check already in progress, skipping');
+      console.log('⚠️  STEP 201: Auth check already in progress, preventing race condition');
+      console.log('   └─ Skipping external auth check');
       return;
     }
 
     // Prevent too frequent auth checks (cooldown period)
     const now = Date.now();
     if (now - lastAuthCheck < 2000) { // 2 second cooldown
-      console.log('⚠️  APP: Auth check too recent, skipping');
+      console.log('⚠️  STEP 202: Auth check too recent, enforcing cooldown');
+      console.log('   ├─ Last check:', new Date(lastAuthCheck).toISOString());
+      console.log('   ├─ Cooldown period: 2 seconds');
+      console.log('   └─ Skipping external auth check');
       return;
     }
 
     // Only check auth on the intro page to prevent unnecessary checks
     if (location.pathname !== "/") {
-      console.log('⚠️  APP: Not on intro page, skipping auth check');
+      console.log('⚠️  STEP 203: Not on intro page, skipping external auth check');
+      console.log('   ├─ Current path:', location.pathname);
+      console.log('   └─ External auth only checked on intro page');
       return;
     }
 
+    console.log('🔄 STEP 204: Setting up external auth check');
     setLastAuthCheck(Date.now());
+    
+    console.log('🍪 STEP 205: Checking for external authentication cookies');
+    console.log('   ├─ Target URL:', import.meta.env.VITE_API_URL);
+    console.log('   └─ Looking for: access_token, refresh_token');
+    
     chrome.cookies.getAll({ url: import.meta.env.VITE_API_URL }, async (cookies) => {
-      console.log('🔍 APP: Checking for external auth cookies:', cookies);
+      console.log('� STEP 206: Processing external cookie results');
+      console.log('   ├─ Total cookies found:', cookies.length);
+      console.log('   ├─ Cookie names:', cookies.map(c => c.name));
+      
       const accessToken = cookies.find((cookie) => cookie.name === "access_token")?.value;
       const refreshToken = cookies.find((cookie) => cookie.name === "refresh_token")?.value;
+
+      console.log('   ├─ External access token found:', !!accessToken);
+      console.log('   ├─ External refresh token found:', !!refreshToken);
+      console.log('   └─ Access token length:', accessToken?.length || 0);
 
       // First check if we already have backend cookies and validate them
       const backendCookie = await new Promise<chrome.cookies.Cookie | null>((resolve) => {

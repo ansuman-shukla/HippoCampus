@@ -416,14 +416,24 @@ export const logout = async (): Promise<AuthResponse> => {
  * Get current authentication status from backend
  */
 export const getAuthStatus = async (): Promise<AuthResponse> => {
+  console.log('🔍 STEP 100: Starting backend authentication status check');
+  console.log('   ├─ Function: authUtils.getAuthStatus()');
+  console.log('   ├─ Target URL:', `${getApiBaseUrl()}/auth/status`);
+  console.log('   ├─ Method: GET');
+  console.log('   ├─ Credentials: include (for cookies)');
+  console.log('   └─ Purpose: Validate current authentication with backend');
+
   try {
-    console.log('🔍 AUTH UTILS: Starting auth status check');
+    console.log('⏱️  STEP 101: Setting up request with timeout protection');
+    console.log('   ├─ Timeout duration: 10 seconds');
+    console.log('   └─ Using Promise.race for timeout handling');
     
     // Create a timeout promise
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Auth status check timeout')), 10000); // 10 second timeout
     });
 
+    console.log('📡 STEP 102: Sending auth status request to backend');
     const fetchPromise = fetch(`${getApiBaseUrl()}/auth/status`, {
       method: 'GET',
       credentials: 'include', // Always use cookies - backend handles auth
@@ -434,30 +444,48 @@ export const getAuthStatus = async (): Promise<AuthResponse> => {
 
     const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
 
-    console.log(`📡 AUTH UTILS: Response status: ${response.status}`);
+    console.log('� STEP 103: Processing backend auth status response');
+    console.log('   ├─ Response status:', response.status);
+    console.log('   ├─ Response OK:', response.ok);
+    console.log('   ├─ Status text:', response.statusText);
+    console.log('   └─ Headers received:', !!response.headers);
 
     if (!response.ok) {
       if (response.status === 401) {
-        console.warn('Auth status check returned 401 - user not authenticated');
+        console.log('🚫 STEP 104A: Authentication failed - 401 Unauthorized');
+        console.log('   ├─ User is not authenticated');
+        console.log('   ├─ Tokens may be missing, expired, or invalid');
+        console.log('   └─ Returning authentication failure');
+        
         return {
           success: false,
           error: 'Not authenticated',
         };
       }
 
+      console.error('❌ STEP 104B: Backend error during auth status check');
       const errorData = await response.json().catch(() => ({}));
-      console.error('Auth status check failed:', errorData);
+      console.error('   ├─ Status code:', response.status);
+      console.error('   ├─ Error data:', errorData);
+      console.error('   └─ Error detail:', errorData.detail || 'Unknown error');
+      
       return {
         success: false,
         error: errorData.detail || 'Failed to get auth status',
       };
     }
 
+    console.log('✅ STEP 104C: Successful response - parsing auth data');
     const data = await response.json();
-    console.log('Auth status check successful:', data);
+    console.log('   ├─ Response data keys:', Object.keys(data));
+    console.log('   ├─ Is authenticated:', data.is_authenticated);
+    console.log('   ├─ User ID present:', !!data.user_id);
+    console.log('   ├─ User email present:', !!data.user_email);
+    console.log('   └─ Token valid:', data.token_valid);
     
     // Check if user is authenticated based on backend response
     if (data.is_authenticated && data.user_id) {
+      console.log('🎉 STEP 105A: User is authenticated - constructing user object');
       const user = {
         id: data.user_id,
         email: data.user_email || '',
@@ -465,27 +493,46 @@ export const getAuthStatus = async (): Promise<AuthResponse> => {
         picture: data.user_picture || data.picture,
       };
 
+      console.log('   ├─ User ID:', user.id);
+      console.log('   ├─ User email:', user.email);
+      console.log('   ├─ User name:', user.full_name || 'Not provided');
+      console.log('   └─ User picture:', !!user.picture);
+
+      console.log('💾 STEP 106A: Storing user info in localStorage for quick access');
       // Store user info in localStorage for quick access
       try {
         localStorage.setItem('user_id', user.id);
         if (user.full_name) localStorage.setItem('user_name', user.full_name);
         if (user.picture) localStorage.setItem('user_picture', user.picture);
+        console.log('   ├─ Stored user_id:', user.id);
+        console.log('   ├─ Stored user_name:', user.full_name || 'Not provided');
+        console.log('   └─ Stored user_picture:', !!user.picture);
       } catch (error) {
-        console.warn('Failed to store user info in localStorage:', error);
+        console.warn('⚠️  STEP 107A: Failed to store user info in localStorage:', error);
       }
 
+      console.log('✅ STEP 108A: Authentication successful - returning user data');
       return {
         success: true,
         user,
       };
     }
     
+    console.log('🚫 STEP 105B: User is not authenticated according to backend');
+    console.log('   ├─ is_authenticated:', data.is_authenticated || false);
+    console.log('   ├─ user_id present:', !!data.user_id);
+    console.log('   └─ Returning authentication failure');
+    
     return {
       success: false,
       error: 'Not authenticated',
     };
   } catch (error) {
-    console.error('Auth status check failed:', error);
+    console.error('💥 STEP 109: Authentication status check failed with exception');
+    console.error('   ├─ Error type:', (error as Error).constructor.name);
+    console.error('   ├─ Error message:', (error as Error).message);
+    console.error('   └─ This indicates network or service issues');
+    
     return {
       success: false,
       error: 'Unable to check authentication status',

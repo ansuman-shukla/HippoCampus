@@ -26,13 +26,22 @@ const Intro = () => {
     };
 
     const handleAuth = async () => {
-        console.log('🚀 INTRO: Get Started clicked, beginning comprehensive auth check...');
+        console.log('🚀 STEP 300: User clicked Get Started - initiating authentication flow');
+        console.log('   ├─ Function: IntroPage.handleAuth()');
+        console.log('   ├─ Current page: Intro/Landing page');
+        console.log('   └─ Purpose: Start comprehensive authentication check and setup');
+        
+        console.log('🔄 STEP 301: Setting authentication check state');
         setIsCheckingAuth(true);
         
         try {
+            console.log('🔍 STEP 302: Checking for ongoing auth transfer from App.tsx');
             // Check if auth transfer is already in progress from App.tsx
             if (window.authTransferInProgress) {
-                console.log('⚠️  INTRO: Auth transfer already in progress, waiting for completion...');
+                console.log('⚠️  STEP 303: Auth transfer already in progress, waiting for completion...');
+                console.log('   ├─ Transfer in progress: App.tsx is handling external auth');
+                console.log('   ├─ Max wait time: 10 seconds');
+                console.log('   └─ Polling every 500ms');
                 
                 // Wait for the transfer to complete (with timeout)
                 let waitCount = 0;
@@ -41,13 +50,19 @@ const Intro = () => {
                 while (window.authTransferInProgress && waitCount < maxWait) {
                     await new Promise(resolve => setTimeout(resolve, 500));
                     waitCount++;
+                    console.log(`   ├─ Waiting... ${waitCount * 500}ms elapsed`);
                 }
                 
                 if (window.authTransferInProgress) {
-                    console.log('⚠️  INTRO: Auth transfer timeout, proceeding with manual check');
+                    console.log('⚠️  STEP 304A: Auth transfer timeout - proceeding with manual check');
+                    console.log('   └─ App.tsx transfer may be stuck, taking over');
                 } else {
-                    console.log('✅ INTRO: Auth transfer completed, checking final state');
+                    console.log('✅ STEP 304B: Auth transfer completed successfully');
+                    console.log('   └─ App.tsx finished external auth processing');
                 }
+            } else {
+                console.log('ℹ️  STEP 303: No ongoing auth transfer detected');
+                console.log('   └─ Proceeding with standard auth check');
             }
 
             // First check if we already have backend tokens and validate them
