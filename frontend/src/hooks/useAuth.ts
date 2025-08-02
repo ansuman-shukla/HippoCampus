@@ -749,7 +749,7 @@ export const useAuth = () => {
       
       console.log('✅ STEP 93: useAuth hook cleanup completed');
     };
-  }, [checkAuthStatus]);
+  }, []); // Remove checkAuthStatus dependency to prevent reinitialization
 
   console.log('📋 STEP 95: Returning useAuth hook interface');
   console.log('   ├─ Current auth state - User:', !!authState.user);

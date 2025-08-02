@@ -17,6 +17,7 @@ const pageVariants = {
 
 import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
+import AuthLoadingIndicator from "./components/AuthLoadingIndicator";
 
 // Extend Window interface to include our custom property
 declare global {
@@ -41,7 +42,7 @@ const AnimatedRoutes = () => {
   const Navigate = useNavigate();
   const location = useLocation();
   const [quotes, setQuotes] = useState<string[]>([]);
-  const { checkAuthStatus } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
   const [authCheckInProgress, setAuthCheckInProgress] = useState(false);
   const [lastAuthCheck, setLastAuthCheck] = useState(0);
 
@@ -77,18 +78,6 @@ const AnimatedRoutes = () => {
     };
   }, [Navigate]);
 
-  // Helper function to validate authentication with backend
-  const validateAuthenticationWithBackend = async (): Promise<boolean> => {
-    try {
-      console.log('🔍 APP: Validating authentication with backend...');
-      const authResult = await checkAuthStatus();
-      console.log(`📊 APP: Auth validation result: ${authResult}`);
-      return authResult;
-    } catch (error) {
-      console.error('❌ APP: Auth validation failed:', error);
-      return false;
-    }
-  };
 
   // Check for external auth (from popup/extension auth flow)
   function checkForExternalAuth() {
@@ -152,17 +141,9 @@ const AnimatedRoutes = () => {
       });
 
       if (backendCookie) {
-        console.log('🔍 APP: Backend cookies found, validating authentication...');
-        const isValidAuth = await validateAuthenticationWithBackend();
-        
-        if (isValidAuth) {
-          console.log('✅ APP: Backend authentication validated successfully, navigating to submit');
-          Navigate("/submit");
-          return;
-        } else {
-          console.log('❌ APP: Backend authentication validation failed, cookies may be expired');
-          // Don't navigate, let the flow continue to check external auth or redirect to auth page
-        }
+        console.log('🔍 APP: Backend cookies found, but letting useAuth handle validation');
+        // Let useAuth hook handle the validation to avoid duplicate calls
+        return;
       }
 
       // If cookies are not found, try to get tokens from localStorage via content script or direct injection
@@ -211,9 +192,8 @@ const AnimatedRoutes = () => {
             });
             
             if (verificationCookie && location.pathname === "/") {
-              console.log('✅ APP: Backend cookies set successfully from localStorage, checking auth status');
-              await checkAuthStatus();
-              Navigate("/submit");
+              console.log('✅ APP: Backend cookies set successfully from localStorage - useAuth will handle validation');
+              // Let useAuth handle navigation after it validates the auth
             }
             return;
           }
@@ -270,17 +250,10 @@ const AnimatedRoutes = () => {
               // This is the critical fix. We wait 1.5 seconds before verifying.
               // This gives the backend enough time to create the new user in the database.
               setTimeout(async () => {
-                console.log('✅ APP: Delay finished. Now checking auth status and navigating.');
-                const authSuccess = await checkAuthStatus();
-                
-                if (authSuccess) {
-                  console.log('✅ APP: Auth status verified after delay, cleaning up and navigating');
-                  chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
-                  chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
-                  Navigate("/submit");
-                } else {
-                  console.error('❌ APP: Auth status check FAILED even after delay.');
-                }
+                console.log('✅ APP: Delay finished. Cleaning up external cookies - useAuth will handle validation');
+                // Clean up external cookies and let useAuth handle navigation
+                chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "access_token" });
+                chrome.cookies.remove({ url: import.meta.env.VITE_API_URL, name: "refresh_token" });
                 window.authTransferInProgress = false; // Release lock here
               }, 1500); // 1.5 second delay
               
@@ -315,19 +288,8 @@ const AnimatedRoutes = () => {
         name: 'access_token',
       }, async (cookie) => {
         if (cookie && location.pathname === "/") {
-          console.log('✅ APP: Backend authentication found, ensuring localStorage is populated');
-          // User is authenticated, ensure localStorage is populated
-          try {
-            setAuthCheckInProgress(true);
-            await checkAuthStatus();
-            Navigate("/submit");
-          } catch (error) {
-            console.warn('⚠️  APP: Auth status check failed, but user has valid cookies:', error);
-            // Still navigate to submit page as user has valid cookies
-            Navigate("/submit");
-          } finally {
-            setAuthCheckInProgress(false);
-          }
+          console.log('✅ APP: Backend authentication found - useAuth will handle validation and navigation');
+          // Let useAuth hook handle validation and navigation
         } else if (!cookie && !accessToken) {
           // Check for refresh token before giving up
           chrome.cookies.get({
@@ -335,18 +297,8 @@ const AnimatedRoutes = () => {
             name: 'refresh_token',
           }, async (refreshCookie) => {
             if (refreshCookie) {
-              console.log('🔄 APP: Found refresh token, attempting to restore session');
-              try {
-                setAuthCheckInProgress(true);
-                const authResult = await checkAuthStatus();
-                if (authResult && location.pathname === "/") {
-                  Navigate("/submit");
-                }
-              } catch (error) {
-                console.log('❌ APP: Failed to restore session with refresh token:', error);
-              } finally {
-                setAuthCheckInProgress(false);
-              }
+              console.log('🔄 APP: Found refresh token - useAuth will handle session restoration');
+              // Let useAuth hook handle refresh token validation
             }
             // Continue checking with shorter interval only if no refresh token and no auth check in progress
             if (!refreshCookie && !window.authTransferInProgress && !authCheckInProgress) {
@@ -412,13 +364,10 @@ const AnimatedRoutes = () => {
         });
       }
 
-      // Verify authentication with backend after cookies are set
-      await checkAuthStatus();
-      
       // Small delay to ensure cookies are propagated
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      console.log('Backend cookies set from external auth');
+      console.log('Backend cookies set from external auth - useAuth will handle validation');
     } catch (error) {
       console.error('Error setting backend cookies:', error);
       throw error; // Re-throw to be caught by caller
@@ -470,16 +419,8 @@ const AnimatedRoutes = () => {
         });
 
         if (cookie && location.pathname === "/") {
-          console.log('🔍 APP: Backend cookies found in handleAuthFlow, validating authentication...');
-          const isValidAuth = await validateAuthenticationWithBackend();
-          
-          if (isValidAuth) {
-            console.log('✅ APP: Authentication validated in handleAuthFlow, navigating to submit');
-            Navigate("/submit");
-          } else {
-            console.log('❌ APP: Authentication validation failed in handleAuthFlow, staying on intro page');
-            // Don't navigate if auth validation fails
-          }
+          console.log('🔍 APP: Backend cookies found in handleAuthFlow - useAuth will handle validation');
+          // Let useAuth hook handle validation to avoid duplicate calls
         }
 
         // Load quotes from localStorage or fetch from backend
@@ -570,11 +511,23 @@ const AnimatedRoutes = () => {
     };
   }, []);
 
+  // Navigation effect based on auth state
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && location.pathname === "/") {
+      console.log('🎯 APP: User is authenticated, redirecting to submit page');
+      Navigate("/submit");
+    }
+  }, [isLoading, isAuthenticated, location.pathname, Navigate]);
 
-
-
-
-
+  // Show loading screen immediately when auth is being checked
+  if (isLoading) {
+    return (
+      <AuthLoadingIndicator 
+        message="Hold on" 
+        showDetails={true}
+      />
+    );
+  }
 
   return (
     <AnimatePresence mode="wait">

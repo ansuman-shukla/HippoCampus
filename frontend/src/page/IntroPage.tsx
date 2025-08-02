@@ -1,6 +1,6 @@
 import Button from "../components/Button";
 import Logo from '../assets/Logo.svg'
-import LoaderPillars from '../components/LoaderPillars';
+import AuthLoadingIndicator from '../components/AuthLoadingIndicator';
 import '../index.css'
 import { useNavigate } from 'react-router-dom';
 import {motion} from 'framer-motion';
@@ -311,34 +311,10 @@ const Intro = () => {
     // Show loading state while checking authentication
     if (isCheckingAuth) {
         return (
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 1.5, ease: "ease" }}
-                className="h-[500px] w-[100%] relative border border-black rounded-lg overflow-hidden"
-            >
-                {/* Background with colored sections */}
-                <div className="absolute inset-0 flex">
-                    <div className="w-1/4 bg-[var(--primary-orange)]" />
-                    <div className="w-1/4 bg-[var(--primary-green)]" />
-                    <div className="w-1/4 bg-[var(--primary-yellow)]" />
-                    <div className="w-1/4 bg-[var(--primary-blue)]" />
-                </div>
-
-                {/* Content */}
-                <div className="relative h-full w-full flex items-center justify-center">
-                    <div className="flex flex-col items-center text-center space-y-8">
-                        <p className="text-4xl nyr max-w-md">
-                            "Setting things up for you..."
-                        </p>
-                        
-                        {/* Loader animation */}
-                        <LoaderPillars />
-                    </div>
-                </div>
-
-                
-            </motion.div>
+            <AuthLoadingIndicator 
+                message="Setting things up for you..." 
+                showDetails={true}
+            />
         );
     }
 
