@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { getAuthStatus, logout as authUtilsLogout } from '../utils/authUtils';
 
@@ -36,6 +36,9 @@ export const useAuth = () => {
     tokenRefreshed: false
   });
 
+  // Use a ref to track ongoing auth requests and prevent duplicates
+  const authRequestRef = useRef<Promise<boolean> | null>(null);
+
   // Check authentication status from backend (single source of truth)
   // Backend middleware handles token validation, refresh, and user management automatically
   const checkAuthStatus = useCallback(async () => {
@@ -43,77 +46,92 @@ export const useAuth = () => {
     console.log('   ├─ Function: useAuth.checkAuthStatus()');
     console.log('   └─ Purpose: Check if user is authenticated with backend');
 
-    // Create a flag to track if we're making the API call
-    // Use a ref or static variable to prevent multiple simultaneous calls
-    // But don't block based on isLoading state as it causes issues
-    console.log('🔄 STEP 1A: Proceeding with auth check (isLoading guard removed)');
+    // Check if there's already an ongoing auth request
+    if (authRequestRef.current) {
+      console.log('🔄 STEP 1A: Auth request already in progress, returning existing promise');
+      console.log('   └─ This prevents duplicate API calls and improves performance');
+      return await authRequestRef.current;
+    }
+
+    console.log('🔄 STEP 1B: No ongoing request, starting new auth check');
     console.log('   └─ Current state: isLoading =', authState.isLoading);
 
-    try {
-      console.log('🔄 STEP 2: Setting loading state and clearing previous errors');
-      setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      console.log('📡 STEP 3: Calling backend auth status endpoint');
-      console.log('   ├─ Function: getAuthStatus() from authUtils');
-      console.log('   └─ Target: Backend /auth/status endpoint');
-      console.log('📡 STEP 3: Calling backend auth status endpoint');
-      console.log('   ├─ Function: getAuthStatus() from authUtils');
-      console.log('   └─ Target: Backend /auth/status endpoint');
-      const authResult = await getAuthStatus();
-      
-      console.log('📊 STEP 4: Processing auth status response from backend');
-      console.log('   ├─ Response success:', authResult.success);
-      console.log('   ├─ User data present:', !!authResult.user);
-      console.log('   └─ Error message:', authResult.error || 'None');
-      
-      if (authResult.success && authResult.user) {
-        console.log('✅ STEP 5A: Authentication successful - updating state to authenticated');
-        console.log('   ├─ User ID:', authResult.user.id);
-        console.log('   ├─ User email:', authResult.user.email);
-        console.log('   ├─ User name:', authResult.user.full_name || 'Not provided');
-        console.log('   └─ Setting isAuthenticated = true');
+    // Create and store the auth request promise
+    const authPromise = (async (): Promise<boolean> => {
+      try {
+        console.log('🔄 STEP 2: Setting loading state and clearing previous errors');
+        setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
         
-        setAuthState({
-          user: authResult.user as User,
-          isLoading: false,
-          isAuthenticated: true,
-          error: null,
-          tokenRefreshed: false
-        });
-        console.log('🎉 STEP 6A: Auth state updated successfully - user is authenticated');
-        return true;
-      } else {
-        console.log('❌ STEP 5B: Authentication failed - updating state to unauthenticated');
-        console.log('   ├─ Reason:', authResult.error || 'Unknown error');
-        console.log('   └─ Setting isAuthenticated = false');
+        console.log('📡 STEP 3: Calling backend auth status endpoint');
+        console.log('   ├─ Function: getAuthStatus() from authUtils');
+        console.log('   └─ Target: Backend /auth/status endpoint');
+        const authResult = await getAuthStatus();
+        
+        console.log('📊 STEP 4: Processing auth status response from backend');
+        console.log('   ├─ Response success:', authResult.success);
+        console.log('   ├─ User data present:', !!authResult.user);
+        console.log('   └─ Error message:', authResult.error || 'None');
+        
+        if (authResult.success && authResult.user) {
+          console.log('✅ STEP 5A: Authentication successful - updating state to authenticated');
+          console.log('   ├─ User ID:', authResult.user.id);
+          console.log('   ├─ User email:', authResult.user.email);
+          console.log('   ├─ User name:', authResult.user.full_name || 'Not provided');
+          console.log('   └─ Setting isAuthenticated = true');
+          
+          setAuthState({
+            user: authResult.user as User,
+            isLoading: false,
+            isAuthenticated: true,
+            error: null,
+            tokenRefreshed: false
+          });
+          console.log('🎉 STEP 6A: Auth state updated successfully - user is authenticated');
+          return true;
+        } else {
+          console.log('❌ STEP 5B: Authentication failed - updating state to unauthenticated');
+          console.log('   ├─ Reason:', authResult.error || 'Unknown error');
+          console.log('   └─ Setting isAuthenticated = false');
+          
+          setAuthState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+            error: authResult.error || null,
+            tokenRefreshed: false
+          });
+          console.log('🚫 STEP 6B: Auth state updated - user is not authenticated');
+          return false;
+        }
+      } catch (error: any) {
+        console.error('💥 STEP 7: Auth status check failed with error');
+        console.error('   ├─ Error type:', error.constructor.name);
+        console.error('   ├─ Error message:', error.message);
+        console.error('   └─ Setting error state and isAuthenticated = false');
         
         setAuthState({
           user: null,
           isLoading: false,
           isAuthenticated: false,
-          error: authResult.error || null,
+          error: 'Failed to check authentication status',
+          errorType: 'network_error',
           tokenRefreshed: false
         });
-        console.log('🚫 STEP 6B: Auth state updated - user is not authenticated');
+        console.log('🔄 STEP 8: Error state set - checkAuthStatus completed with failure');
         return false;
+      } finally {
+        // Clear the request ref when done
+        authRequestRef.current = null;
+        console.log('🧹 STEP 9: Cleared auth request reference - ready for new requests');
       }
-    } catch (error: any) {
-      console.error('💥 STEP 7: Auth status check failed with error');
-      console.error('   ├─ Error type:', error.constructor.name);
-      console.error('   ├─ Error message:', error.message);
-      console.error('   └─ Setting error state and isAuthenticated = false');
-      
-      setAuthState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false,
-        error: 'Failed to check authentication status',
-        errorType: 'network_error',
-        tokenRefreshed: false
-      });
-      console.log('🔄 STEP 8: Error state set - checkAuthStatus completed with failure');
-      return false;
-    }
+    })();
+
+    // Store the promise in the ref
+    authRequestRef.current = authPromise;
+    console.log('💾 STEP 1C: Stored auth request promise in ref for deduplication');
+    
+    // Return the promise result
+    return await authPromise;
   }, []); // Remove dependency to prevent infinite loops
 
   // Sign in with Supabase
